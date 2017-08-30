@@ -1,0 +1,95 @@
+//include "/etc/bind/named.conf.local";
+//include "/etc/bind/named.conf.default-zones";
+
+//start named options
+options {
+	directory "/var/cache/bind";
+        allow-query { any; };
+        recursion yes;
+        querylog yes;
+
+	// If there is a firewall between you and nameservers you want
+	// to talk to, you may need to fix the firewall to allow multiple
+	// ports to talk.  See http://www.kb.cert.org/vuls/id/800113
+
+	// If your ISP provided one or more IP addresses for stable 
+	// nameservers, you probably want to use them as forwarders.  
+	// Uncomment the following block, and insert the addresses replacing 
+	// the all-0's placeholder.
+
+	// forwarders {
+	// 	0.0.0.0;
+	// };
+
+	//========================================================================
+	// If BIND logs error messages about the root key being expired,
+	// you will need to update your keys.  See https://www.isc.org/bind-keys
+	//========================================================================
+	dnssec-validation auto;
+
+	auth-nxdomain no;    # conform to RFC1035
+	listen-on-v6 { any; };
+	listen-on port 53 { $dnsserver; };
+};
+
+logging {
+        channel default_debug {
+                file "named.run";
+                severity dynamic;
+        };
+};
+
+
+
+
+// start named default zones 
+zone "." {
+	type hint;
+	file "/etc/bind/db.root";
+};
+
+// be authoritative for the localhost forward and reverse zones, and for
+// broadcast zones as per RFC 1912
+
+zone "localhost" {
+	type master;
+	file "/etc/bind/db.local";
+};
+
+zone "127.in-addr.arpa" {
+	type master;
+	file "/etc/bind/db.127";
+};
+
+zone "0.in-addr.arpa" {
+	type master;
+	file "/etc/bind/db.0";
+};
+
+zone "255.in-addr.arpa" {
+	type master;
+	file "/etc/bind/db.255";
+};
+//end named default zones
+
+
+// start named local zone
+zone "laworks.com" IN {
+        type master;
+        file "db.$domain";
+        allow-update { none; };
+};
+// end named local zone
+
+// start named reverse zones
+#for $revfile in $revfiles
+zone "$revfile" IN {
+        type master;
+        file "$revfile";
+        allow-update { none; };
+};
+#end for
+// end named reverse zones
+
+include "/etc/bind/zones.rfc1918";
+include "/etc/bind/rndc.key";

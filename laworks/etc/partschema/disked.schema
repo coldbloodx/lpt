@@ -1,0 +1,7 @@
+#root=/dev/sda1
+select /dev/sda
+mklabel msdos
+mkpart primary ext2 0 10G
+mkpart primary linux-swap 10G 12G
+toggle 1 b
+quit

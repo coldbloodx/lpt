@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import sys
+
+from unipath.path import Path as path
+
+from dbitem import *
+from dbhelper import *
+from constant import *
+from nodeoperation import *
+from app import LAApp
+from dbman  import ConnManager as DBConnManager
+
+class LANodeLsApp(LAApp):
+    def __init__(self):
+        LAApp.__init__(self, debug=False)
+        self.force_single_instance()
+
+    def parseargs(self):
+
+        self.parser.add_option("-v", "--version", action="callback",
+                callback=self.showversion, help="version")
+
+        self.parser.add_option("-l", "--list", action="callback",
+                callback=self.listnodes, help="version")
+
+
+        if len(sys.argv[1:]) < 1:
+            self.parser.print_help()
+            sys.exit(0)
+
+        (self.options, self.args) = self.parser.parse_args(sys.argv[1:])
+
+    def listnodes(self, option, opt, value, parser):
+        
+        dbconn = DBConnManager.get_session()
+        nodes = dbconn.query(Node).all()
+
+        for node in nodes:
+            print "nid: %s" % node.nid
+            print "nodename: %s" % node.nodename
+            print "nodegroup: %s" % node.nodegroup.ngname
+            print "nodestatus: %s" % node.status
+            print "nics: %s"  % ", ".join([ "%s %s %s" % (nic.mac, nic.nicname, nic.ip) for nic in node.nics ])
+            print 
+
+        sys.exit(0)
+
+    def lsnode(self):
+        dbconn = DBConnManager.get_session()
+        nodes = dbconn.query(Node).all()
+
+        for node in nodes:
+            print "nid       : %s" % node.nid
+            print "name      : %s" % node.nodename
+            print "nodegroup : %s" % node.nodegroup.ngname
+            print "type      : %s" % node.nodegroup.provtype
+            print "status    : %s" % node.status
+            print "nics      : %s"  % ", ".join([ "%s %s %s" % (nic.mac, nic.nicname, nic.ip) for nic in node.nics ])
+            print 
+
+        sys.exit(0)
+
+    def run(self):
+        self.parseargs()
+
+if __name__ == '__main__':
+    nodelsapp = LANodeLsApp()
+    nodelsapp.lsnode()

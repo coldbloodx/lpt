@@ -1,0 +1,7 @@
+# /etc/default/tftpd-hpa
+
+RUN_DAEMON="yes" 
+TFTP_USERNAME="tftp"
+TFTP_ADDRESS=":69"
+TFTP_DIRECTORY="/var/lib/tftpboot"
+TFTP_OPTIONS="-l -s -m /opt/laworks/etc/tftpd.remap"

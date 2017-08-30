@@ -1,0 +1,600 @@
+#!/bin/sh
+
+[ -d /dev ] || mkdir -m 0755 /dev
+[ -d /root ] || mkdir -m 0700 /root
+[ -d /sys ] || mkdir /sys
+[ -d /proc ] || mkdir /proc
+[ -d /tmp ] || mkdir /tmp
+mkdir -p /var/lock
+mount -t sysfs -o nodev,noexec,nosuid sysfs /sys
+mount -t proc -o nodev,noexec,nosuid proc /proc
+# Some things don't work properly without /etc/mtab.
+ln -sf /proc/mounts /etc/mtab
+
+grep -q '\<quiet\>' /proc/cmdline || echo "Loading, please wait..."
+
+# Note that this only becomes /dev on the real filesystem if udev's scripts
+# are used; which they will be, but it's worth pointing out
+if ! mount -t devtmpfs -o mode=0755 udev /dev; then
+    echo "W: devtmpfs not available, falling back to tmpfs for /dev"
+    mount -t tmpfs -o mode=0755 udev /dev
+    [ -e /dev/console ] || mknod -m 0600 /dev/console c 5 1
+    [ -e /dev/null ] || mknod /dev/null c 1 3
+fi
+mkdir /dev/pts
+mount -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts || true
+mount -t tmpfs -o "nosuid,size=20%,mode=0755" tmpfs /run
+
+# Bring in the main config
+. /scripts/functions
+maybe_break top
+# Don't do log messages here to avoid confusing graphical boots
+run_scripts /scripts/init-top
+maybe_break modules
+load_modules
+
+# ===================
+# our script starts here!
+sleep 10
+
+# uncomment following line to debug
+debug()
+{
+    echo "entering debug mode"
+    /bin/sh
+}
+
+initnic()
+{
+    echo "getting master ip"
+    #get master ip through /proc/cmdline
+    masterip=`cat /proc/cmdline |sed 's/.*\ parent=\([0-9\.]*\) .*/\1/g'`
+    if [ -z $masterip ]; then
+        echo "masterip is NULL"
+        debug
+    fi
+    echo "master ip: $masterip"
+
+    echo "getting ip address"
+    bootnic=eth0
+    #get my ip and netmask through /proc/cmdline
+    ip=`cat /proc/cmdline |sed 's/.*\ ip=\([0-9\.]*\) .*/\1/g'`
+    netmask=`cat /proc/cmdline |sed 's/.*\ netmask=\([0-9\.]*\)$/\1/g'`
+    echo "my ip/netmask: $ip/$netmask"
+    
+    ifconfig $bootnic $ip netmask $netmask up
+    route add default gw $masterip
+
+    if [ "$?" != "0" ]; then
+        debug
+    fi
+
+    mac=`ifconfig $bootnic|grep $bootnic|awk -F " " '{print $NF}'`
+    export MAC=$mac
+}
+
+updatestate()
+{
+    state=$1
+    case $state in 
+        creatingfs|firstboot|ready)
+        ;;
+    *)
+        echo "unknow state: $state"
+        debug
+        ;;
+    esac
+
+    nodeinfo="/tmp/nodeinfo"
+
+    url="http://$masterip/cgi-bin/nodeinfo.cgi.py?mac=$mac&status=$state"
+    echo "node info url: $url"
+
+    wget $url -O $nodeinfo
+    if [ "$?" != 0 ]; then
+        echo "can not get node info script"
+        debug
+    fi
+    chmod 755 $nodeinfo
+    echo "export master=$masterip" >> $nodeinfo
+    . $nodeinfo
+}
+
+initnodeinfo()
+{
+    #get node info
+
+    updatestate $status_creatingfs
+
+    echo "=====Node Information====="
+    echo "NID     : $nid"
+    echo "NGID    : $ngid"
+    echo "NICS    : $nics"
+    echo "PROVTYPE: $provtype"
+    echo "UITYPE  : $uitype"
+    echo "DISTRO  : $distro"
+    echo "NODENAME: $nodename"
+    echo "DUALBOOT: $dualboot"
+    echo "=====Node Information====="
+
+}
+
+initdisk()
+{
+
+    # wipe off all partitions
+    dd if=/dev/zero of=$boothd count=1 bs=512
+    schema=/tmp/schema
+    wget http://$masterip/profiles/$ngid/schema -O $schema
+    
+    if [ "x$provtype" == "xdisked" ]; then
+        parted $boothd < $schema
+        parted $boothd print
+    fi
+}
+
+chroot_to_memdisk()
+{
+    ip=`echo $nics |awk -F ":" '{print $3}'`
+
+    updatestate $status_ready
+    exec switch_root $sysroot /sbin/init
+}
+
+#TODO should be fixed!!!
+initfstab()
+{
+    echo "updating fstab"
+    cat << _EOF > $sysroot/etc/fstab
+#updated by LPT
+proc /proc proc nodev,noexec,nosuid 0 0
+/dev/sda1 / ext4   defaults 0 1
+/dev/sda2 none swap defaults 0 0 
+_EOF
+}
+
+update_network()
+{
+    echo "updating network configuration"
+    echo "Distro $distro"
+    case $distro in
+        ubuntu*)
+            config_debian_network
+            
+            ;;
+        rhel*|centos*)
+            config_rhel_network
+            ;;
+    esac
+}
+
+config_rhel_network()
+{
+    echo "Network information"
+    dnsconf="$sysroot/etc/resolv.conf"
+    rm -fr $dnsconf
+
+    for nic in `echo $nics |awk -F";" '{for(i=1; i<=NF; i++) print $i}'`
+    do
+        interface=`echo $nic |awk -F":" '{print $1}'`
+        network=`echo $nic |awk -F":" '{print $2}'`
+        ip=`echo $nic |awk -F":" '{print $3}'`
+        netmask=`echo $nic |awk -F":" '{print $4}'`
+        broadcast=`echo $nic |awk -F":" '{print $5}'`
+        gateway=`echo $nic |awk -F":" '{print $6}'`
+        dns=`echo $nic |awk -F":" '{print $7}'`
+
+        networkconf=$sysroot/etc/sysconfig/network-scripts/ifcfg-${interface}
+
+        echo "====="
+        echo "interface: $interface"
+        echo "ip : $ip"
+        echo "dns: $dns"
+        echo "network: $network"
+        echo "netmask: $netmask"
+        echo "broadcast: $broadcast"
+        echo "gateway: $gateway"
+        echo 
+
+        #format the file
+        rm -fr $networkconf
+        cat <<_EOF >> $networkconf
+BOOTPROTO="static"
+ONBOOT="yes"
+TYPE="Ethernet"
+DEVICE="$interface"
+IPADDR="$ip"
+NETMASK="$netmask"
+GATEWAY="$gateway"
+BROADCAST="$broadcast"
+_EOF
+        echo "nameserver $dns" >> $dnsconf
+    done
+
+    hnameconf="$sysroot/etc/sysconfig/network"
+    rm -fr $hnameconf
+    cat <<_EOF >> $hnameconf
+    NETWORKING=yes
+_EOF
+
+    #update hostname to nodename
+    echo "updating hostname to $nodename"
+    hnamefile=$sysroot/etc/hostname
+    echo $nodename > $hnamefile
+}
+
+config_debian_network()
+{
+    networkconf=$sysroot/etc/network/interfaces
+
+    #init the network configuration file
+    cat << _EOF > $networkconf
+auto lo
+iface lo inet loopback
+
+_EOF
+
+    echo "Network information"
+    for nic in `echo $nics |awk -F";" '{for(i=1; i<=NF; i++) print $i}'`
+    do
+        interface=`echo $nic |awk -F":" '{print $1}'`
+        network=`echo $nic |awk -F":" '{print $2}'`
+        ip=`echo $nic |awk -F":" '{print $3}'`
+        netmask=`echo $nic |awk -F":" '{print $4}'`
+        broadcast=`echo $nic |awk -F":" '{print $5}'`
+        gateway=`echo $nic |awk -F":" '{print $6}'`
+        dns=`echo $nic |awk -F":" '{print $7}'`
+
+        echo "====="
+        echo "interface: $interface"
+        echo "ip : $ip"
+        echo "dns: $dns"
+        echo "network: $network"
+        echo "netmask: $netmask"
+        echo "broadcast: $broadcast"
+        echo "gateway: $gateway"
+        echo 
+
+        #format the file
+        cat <<_EOF >> $networkconf
+auto $interface
+    iface $interface inet static
+    address $ip
+    netmask $netmask
+    network $network
+    broadcast $broadcast
+_EOF
+
+        if [ "x$gateway" != "x" ]; then 
+            echo "    gateway $gateway" >> $networkconf    
+        fi
+        if [ "x$dns" != "x" ]; then
+            echo "    dns-nameservers $dns" >> $networkconf
+        fi
+        # following line is available on busy-box but not available on bash
+        echo -e "\n" >> $networkconf
+    done
+
+    #update hostname to nodename
+    echo "updating hostname to $nodename"
+    hnamefile=$sysroot/etc/hostname
+    echo $nodename > $hnamefile
+
+}
+
+update_initrd_grub()
+{
+    case $distro in
+        ubuntu*)
+            update_debian_initrd_grub
+            ;;
+        rhel*|centos*)
+            update_rhel_init_grub
+            ;;
+    esac
+}
+
+update_rhel_init_grub()
+{
+    echo "updating initrd and grub"
+    mount --bind /proc $sysroot/proc
+    mount --bind /sys  $sysroot/sys
+    mount --bind /dev  $sysroot/dev
+    grubconf=$sysroot/boot/grub/grub.conf
+    prefix='vmlinuz-'
+    kernel=`cd $sysroot/boot; ls $prefix*`
+    kfile="/boot/$kernel"
+    kversion=`echo $kernel| sed "s/$prefix\(.*\)/\1/g"`
+    initrd="/boot/initrd-${kversion}.img"
+
+    echo "kernel: $kernel"
+    echo "kversion: $kversion"
+    echo "initrd: $initrd"
+    
+    echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' > $sysroot/etc/default/grub
+    chroot $sysroot /bin/bash -c "grub2-install $boothd"
+    chroot $sysroot /bin/bash -c "mkinitrd --force $initrd $kversion"
+    chroot $sysroot /bin/bash -c "grub2-mkconfig > /boot/grub2/grub.cfg"
+}
+
+update_debian_initrd_grub()
+{
+    echo "updating initrd and grub"
+    mount --bind /proc $sysroot/proc
+    mount --bind /sys  $sysroot/sys
+    mount --bind /dev  $sysroot/dev
+
+    cp /proc/mounts $sysroot/etc/mtab
+
+
+    # disable Predictable Network Interface
+    # rootfs itself
+    mkdir -p $sysroot/etc/udev/rules.d/
+    ln -s /dev/null $sysroot/etc/udev/rules.d/80-net-setup-link.rules
+    
+    # initrd
+    plugin=$sysroot/usr/share/initramfs-tools/hooks/nicnames
+    cat << _EOF >> $plugin
+#!/bin/sh
+
+PREREQ="klibc"
+
+prereqs()
+{
+	echo "\$PREREQ"
+}
+
+case \$1 in
+# get pre-requisites
+prereqs)
+	prereqs
+	exit 0
+	;;
+esac
+
+# disable Predictable Network Interface
+mkdir -p \$DESTDIR/etc/udev/rules.d/
+ln -s /dev/null \$DESTDIR/etc/udev/rules.d/80-net-setup-link.rules
+
+_EOF
+    chmod 755 $plugin
+
+    mkdir -p $sysroot/var/tmp $sysroot/var/lib/initramfs-tools/ $sysroot/var/lib/dpkg/updates
+    mkdir -p $sysroot/var/lib/dpkg/info $sysroot/var/lib/dpkg/alternatives $sysroot/var/lib/dpkg/triggers
+    mkdir -p $sysroot/var/lib/dpkg/parts $sysroot/tmp
+
+    touch $sysroot/var/lib/dpkg/status
+
+    #this line should be move to genrootfs.sh
+    chroot $sysroot /bin/bash -c "update-initramfs -u; cp /usr/lib/grub/*-pc/* /boot/grub"
+    chroot $sysroot /bin/bash -c "grub-install --force /dev/sda; update-grub"
+
+    rm -fr $sysroot/var/log/journal
+}
+
+add_laworks_service()
+{
+    case $distro in
+        ubuntu*)
+            add_debian_service
+            ;;
+        rhel*|centos*)
+            add_rhel_service
+            ;;
+    esac
+}
+
+add_debian_service()
+{
+    wget http://$masterip/others/rc.laworks -O $sysroot/etc/init.d/rc.laworks
+    chmod 755 $sysroot/etc/init.d/rc.laworks
+    #chroot $sysroot /bin/bash -c "echo 'dash dash/sh boolean false' | debconf-set-selections; DEBIAN_FRONTEND=noninteractive dpkg-reconfigure dash; update-rc.d rc.laworks defaults"
+    chroot $sysroot /bin/bash -c "update-rc.d rc.laworks defaults"
+}
+
+add_rhel_service()
+{
+    wget http://$masterip/others/rc.laworks -O $sysroot/etc/init.d/rc.laworks
+    chmod 755 $sysroot/etc/init.d/rc.laworks
+    chroot $sysroot /bin/bash -c "chkconfig rc.laworks on"
+}
+
+first_boot()
+{
+    updatestate $status_firstboot
+    restart
+}
+
+restart()
+{
+    echo "provisioning done, sleep 3 secs and reboot"
+    sync; sync; sync; sleep 3
+    reboot
+}
+
+mkmemrfs()
+{
+    updatestate $status_creatingfs
+    echo "create rootfs for $provtype $uitype node"
+    rootfs="/tmp/${uitype}rootfs.tar.gz"
+    url="http://$masterip/rootfs/$distro/${uitype}rootfs.tar.gz"
+    wget $url -O $rootfs
+
+    if [ "$?" != "0" ]; then 
+        "mount nfs from installer failed"
+        debug
+    fi
+
+    mkdir -p $sysroot
+    mount tmpfs -t tmpfs $sysroot
+
+    tar xzf $rootfs -C $sysroot
+    #TODO
+    #can not boot into X when use desktop image need investigate again!!!!
+}
+
+mkwinrootfs()
+{
+    echo "win partition schema"
+    parted $boothd -l
+
+    echo "creating windows rootfs for $ngtype node"
+    rootfs="$NFSDIR/$ngdir/win.tar.gz"
+    rawschema="$NFSDIR/$ngdir/partschema"
+    trimedschema=`mktemp`
+    
+    #generate trimedschema and format all new partitions
+    cat $rawschema |grep -v '^#' > $trimedschema
+    ntfs_part_count=`grep -Ec 'logical\ +ntfs' $trimedschema`
+    
+    #format all partition as ntfs
+    echo "formating ntfs logical partitions"
+    i=`expr 4 + $ntfs_part_count`
+    while [ $i -gt 4 ]
+    do
+        mkfs.ntfs /dev/sda${i} -qQ
+        i=`expr $i - 1`
+    done
+    
+    echo "creating rootfs for windows, rootfs=$rootfs, partition=$winpart"
+    fszip restfs $rootfs id=0,dest=$winpart
+    echo "provisioning done, sleep 3 secs and reboot"
+}
+
+mkdiskedrfs()
+{
+    echo "partition schema"
+    parted $boothd print
+    
+    echo "rootpart=$rootpart"
+
+    echo "creating linux rootfs for $provtype $uitype node"
+    rootfs="/tmp/${uitype}rootfs.tar.gz"
+    url="http://$masterip/rootfs/$distro/${uitype}rootfs.tar.gz"
+    wget $url -O $rootfs
+
+    echo "making rootfs"
+    echo yes | mke2fs -q -t ext4 $rootpart
+
+    mkdir $sysroot
+    mount -t $FSTYPE $rootpart $sysroot
+
+    echo "creating rootfs for linux, rootfs=$rootfs, partition=$rootpart"
+    tar -xzf $rootfs -C $sysroot
+
+    mkswap $swappart
+    
+    #make password less access the compute node
+    echo "get pub keys"
+    wget "http://$masterip/others/.id_rsa.pub" -O /tmp/.id_rsa.pub
+    mkdir -p $sysroot/root/.ssh/
+    cat /tmp/.id_rsa.pub > $sysroot/root/.ssh/authorized_keys
+    chmod 0600 $sysroot/root/.ssh/authorized_keys
+
+    cp $nodeinfo $sysroot/etc/profile.d/
+
+    rm -fr $sysroot/env.sh
+    sed -i 's/^StrictModes.*/StrictModes no/g' $sysroot/etc/ssh/sshd_config
+}
+
+# ======================
+# variables definition
+# ======================
+
+#global variables
+masterip=''
+mac=''
+
+nid=''
+ngid=''
+nodename=''
+nics=''
+dualboot=''
+ngtype=''
+ngdir=''
+distro=''
+
+#hard code variables
+
+status_creatingfs="creatingfs"
+status_firstboot="firstboot"
+status_ready="ready"
+
+
+bootnic='eth0'
+
+boothd='/dev/sda'
+winpart='/dev/sda1'
+FSTYPE='ext4'
+
+NFSDIR=''
+sysroot='/sysimage/'
+rootpart='/dev/sda1'
+swappart='/dev/sda2'
+
+################################
+## Main routine starts here!!!##
+################################
+
+#1. init nic
+initnic
+
+#2. get node infomation and update node status to creatingfs
+initnodeinfo
+
+#3. partition disk and get linux root partition
+initdisk
+
+#4. check node group type and do some thing:
+case $provtype in 
+    disked)
+        #TODO add rhel related distroes...
+        #5. make rootfs and update /etc/fstab
+        mkdiskedrfs 
+        initfstab 
+
+        #6. update network related configuration
+        update_network
+        
+        #7. add service 
+        add_laworks_service
+
+        #8. update grub
+        update_initrd_grub
+
+        #9. update node status to firstboot and reboot
+        first_boot 
+        ;;
+    diskless)
+        #5. mkrootfs for mem node 
+        mkmemrfs
+        #6. update network related configuration
+        update_network
+
+        #7. update node status and change root 
+        chroot_to_memdisk
+        ;;
+    dualboot)
+        #7. mkrootfs for winxp
+        mkwinrootfs
+        
+        #8. mkrootfs for linux
+        mklinuxrootfs
+    
+        #9. update fstab
+        update_fstab
+
+        #10. update network related configuration
+        update_network
+
+        #11. update grub
+        update_initrd_grub
+
+        #12. update node status to firstboot and reboot
+        first_boot 
+        ;;
+    *)
+        echo "$provtype is unknow, entering debug mode"
+        debug
+        ;;
+esac

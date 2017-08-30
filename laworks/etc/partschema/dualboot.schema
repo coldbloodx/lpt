@@ -1,0 +1,23 @@
+#select /dev/sda as device
+select /dev/sda
+#make a msdos label
+mklabel msdos
+#primary partition for windows systems, /dev/sda1
+mkpart primary ntfs 0 5G
+#extented partition for other partitions, /dev/sda2
+mkpart extended 5G 20G
+#logical partition /dev/sda5
+mkpart logical ntfs 5G 8G
+#logical partition /dev/sda6
+mkpart logical ntfs 8G 10G
+#logical partition /dev/sda7
+mkpart logical linux-swap 10G 12G
+#logical partition /dev/sda8
+mkpart logical ext2 12G 15G
+#logical partition /dev/sda9
+#root=/dev/sda9
+mkpart logical ext2 15G 20G
+#set /dev/sda1 as bootable
+toggle 1 b
+#quit
+quit

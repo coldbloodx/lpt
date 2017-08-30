@@ -1,0 +1,63 @@
+#! /bin/bash
+### BEGIN INIT INFO
+# Provides:          rc.laworks
+# Required-Start:    $networking
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Run Scripts in /opt/laworks/rc.laworks.d if it exist
+### END INIT INFO
+
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+. /lib/init/vars.sh
+. /lib/lsb/init-functions
+
+do_start() {
+    logfile=/opt/laworks/log/rc.log 
+    rm -fr /opt/laworks/rc.laworks.d
+
+    mkdir -p /opt/laworks/rc.laworks.d /opt/laworks/log
+
+    log_begin_msg "Running laworks boot scripts (/opt/laworks/rc.laworks.d)"
+
+    . /etc/profile.d/nodeinfo
+
+    wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$master/others/rc.laworks.d/  -P /opt/laworks/rc.laworks.d > /tmp/wget.log
+
+    for script in `ls /opt/laworks/rc.laworks.d/*.sh /opt/laworks/rc.laworks.d/*.python 2>/dev/null |sort`;
+    do 
+        if [[ $script =~ .*\.sh$ ]]; then
+            echo `date` "Executing '$script'..."
+            /bin/bash $script >> $logfile 2>&1
+            [[ $? == 0 ]] || echo "$script failed with return code: $?" >> $logfile
+        fi
+
+        if [[ $script =~ .*\.py$ ]]; then
+            echo `date` "Executing '$script'..."
+            python $script >> $logfile  2>&1
+            [[ $? == 0 ]] || echo "$script failed with return code: $?" >> $logfile
+        fi
+    done
+
+    return 0
+}
+
+case "$1" in
+    start)
+        do_start
+        ;;
+    restart|reload|force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 3
+        ;;
+    stop|status)
+        # No-op
+        exit 0
+        ;;
+    *)
+        echo "Usage: $0 start|stop" >&2
+        exit 3
+        ;;
+esac

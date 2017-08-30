@@ -1,0 +1,4 @@
+LABEL install
+default install
+    kernel linux
+    append initrd=initrd.gz parent=$parentip ip=$ip netmask=$netmask

@@ -1,0 +1,3 @@
+LABEL install
+default install
+    localboot 0

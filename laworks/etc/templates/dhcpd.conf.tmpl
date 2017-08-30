@@ -1,0 +1,23 @@
+ddns-update-style none;
+option domain-name "$domain";
+option domain-name-servers $dns;
+
+default-lease-time 120960;
+
+log-facility local7;
+
+#for $network in $networks
+subnet $network.network netmask $network.netmask {
+    range $startip $endip;
+    option subnet-mask $network.netmask;
+    #if $network.gateway
+    option routers $network.gateway;
+    #end if
+    option broadcast-address $network.broadcast;
+    default-lease-time 6000;
+    max-lease-time 7200;
+    next-server $network.tftpsrv;
+    filename "pxelinux.0";
+    option domain-name "$domain";
+} 
+#end for

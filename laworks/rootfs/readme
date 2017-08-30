@@ -1,0 +1,4 @@
+rootfs tmpl for compute nodes.
+ubuntu: For ubuntu based nodes.
+rhel  : For RedHat Enterprise Linux based nodes.
+win   : For windows based nodes.

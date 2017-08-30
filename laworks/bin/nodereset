@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import sys
+
+from unipath.path import Path as path
+
+from dbitem import *
+from dbhelper import *
+from constant import *
+from nodeoperation import *
+from app import LAApp
+from dbman  import ConnManager as DBConnManager
+
+class LANodeResetApp(LAApp):
+    def __init__(self):
+        LAApp.__init__(self, debug=False)
+        self.force_single_instance()
+
+    def parseargs(self):
+
+        self.parser.add_option("-v", "--version", action="callback",
+                callback=self.showversion, help="version")
+
+        self.parser.add_option("-n", "--nodelist", action="callback", callback=self.varargs,
+                 dest="nodelist", help="node list to be resetted", metavar="node list")
+        self.parser.add_option("-p", "--pxeboot", action="store_true", 
+                 dest="pxeboot", help="set node to start from pxe", metavar="pxeboot")
+
+        if len(sys.argv[1:]) < 1:
+            self.parser.print_help()
+            sys.exit(0)
+
+        (self.options, self.args) = self.parser.parse_args(sys.argv[1:])
+
+    def run(self):
+        self.parseargs()
+        if not self.options.nodelist:
+            self.stderrmsg("You must specify at least one node to reset")
+            sys.exit(-1)
+
+        dbconn = DBConnManager.get_session()
+        for nodename in self.options.nodelist:
+            node = get_node_byname(dbconn, nodename)
+            if not node:
+                self.stderrmsg("%s does not exist" % (nodename))
+                sys.exit(1)
+            
+            nic = get_bootnic_bynodename(dbconn, nodename)
+            if not nic:
+                self.stderrmsg("%s does not have a valid nic")
+                sys.exit(1)
+
+            if self.options.pxeboot:
+                node.status = STATUS_IMPORTED
+                if node.nodegroup.os.ostype == 'linux':
+                    genlnxnbpxe(nic)
+                elif node.nodegroup.os.ostype == 'windows':
+                    genwinnbpxe(nic)
+                else:
+                    pass
+            else:
+                genlocalbootpxe(nic)
+
+        dbconn.commit()
+        dbconn.close()
+
+if __name__ == "__main__":
+    noderesetapp = LANodeResetApp()
+    noderesetapp.run()

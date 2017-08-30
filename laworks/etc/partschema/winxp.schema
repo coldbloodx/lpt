@@ -1,0 +1,10 @@
+#only !!!ONE!!! primary partition is allowed!!! 
+#only !!!NTFS!!! file system is allowed!!!
+select /dev/sda
+mklabel msdos
+mkpart primary ntfs 0 5G
+mkpart extended 5G 10G
+mkpart logical ntfs 5G 8G
+mkpart logical ntfs 8G 10G
+toggle 1 b
+quit
