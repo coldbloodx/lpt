@@ -23,7 +23,7 @@ def getmyos():
 
     osmajor, osminor = ver.split(".")
 
-    os = makeos((osname.lower(), osmajor, osminor, "linux", None))
+    os = makeos(["%s%s" %(osname,ver),  osname.lower(), osmajor, osminor, "linux", None])
 
     return os
 

@@ -180,13 +180,15 @@ class TableManager:
         osdict = { myos.osname: myos }
 
         session.add(myos)
-        
+
         if self.conf.has_key('addonos'):
             for entry in self.conf['addonos']:
-                os = makeos(entry)
+                os = [ "%s%s.%s" % (entry[0], entry[1], entry[2]) ]
+                os.extend(list(entry))
+                os = makeos(os)
                 session.add(os)
                 osnames.append(os.osname)
-                osdict[entry[0].lower()] = os
+                osdict[os.osname] = os
         session.commit();
 
         #3. network table
@@ -253,7 +255,7 @@ class TableManager:
                         if uitype == UITYPE_GUI and provtype == PROVTYPE_DISKLESS : continue
 
                         #ignore centos, rhel gui 
-                        if uitype == UITYPE_GUI and os.osname.lower() in [ 'centos', 'rhel'] : continue
+                        if uitype == UITYPE_GUI and os.distro.lower() in [ 'centos', 'rhel'] : continue
 
                         #if provtype == PROVTYPE_DISKLESS and (os.osname.lower() in [ 'centos', 'rhel', 'ubuntu' ]): 
                         #    continue

@@ -60,7 +60,7 @@ class LANodeGroupLsApp(LAApp):
                 "provtype" : ng.provtype,
                 "uitype"   : ng.uitype,
                 "distro"   : ng.os.osname,
-                "os"       : "%s, %s.%s.%s" % (ng.os.osid, ng.os.osname, ng.os.major, ng.os.minor)
+                "os"       : "%s, %s" % (ng.os.osid, ng.os.osname)
                 }
             kvmaps[ng.ngname] = kvmap
         

@@ -121,25 +121,27 @@ class OS(Base):
 
     osid   = Column(Integer(), primary_key=True)
     osname = Column(String(32), nullable=False)
+    distro = Column(String(32), nullable=False)
     major  = Column(String(8), nullable=False)
     minor  = Column(String(8), nullable=False)
     ostype   = Column(String(8), nullable=False)
-    repo = Column(String(32), nullable=True)
+    repo = Column(String(128), nullable=True)
 
-    def __init__(self, osname, major, minor, ostype, repo):
+    def __init__(self, osname, distro, major, minor, ostype, repo):
         self.osname = osname.lower()
+        self.distro = distro.lower()
         self.major  = major
         self.minor  = minor
         self.ostype = ostype
         self.repo = repo
 
     def __repr__(self):
-        return "<OS('%s', '%s', '%s', '%s', '%s', '%s')>" % (self.osid,
-                self.osname, self.major, self.minor, self.ostype, self.repo)
+        return "<OS('%s', '%s', '%s', '%s', '%s', '%s', '%s')>" % (self.osid,
+                self.osname, self.distro, self.major, self.minor, self.ostype, self.repo)
 
 def makeos(vallist):
     """return an OS object from a given list or tuple"""
-    return OS(vallist[0], vallist[1], vallist[2], vallist[3], vallist[4])
+    return OS(vallist[0], vallist[1], vallist[2], vallist[3], vallist[4], vallist[5])
 
 class Node(Base):
     __tablename__ = "node"
