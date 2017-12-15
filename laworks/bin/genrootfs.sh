@@ -7,8 +7,8 @@
 #fi
 
 password=letmein
-apturl=http://mirrors.163.com/ubuntu/
-#apturl=http://itaas:itaas@9.111.113.25/ubuntu/
+#apturl=http://mirrors.163.com/ubuntu/
+apturl=http://itaas:itaas@9.111.113.25/ubuntu/
 
 ipkgs="linux-image-generic openssh-server vim bash-completion tree subversion build-essential git-core nfs-common ctags cscope  libc6-dev"
 rpkgs="thunderbird-gnome-support thunderbird libreoffice-avmedia-backend-gstreamer libreoffice-base-core libreoffice-calc libreoffice-common libreoffice-core libreoffice-draw libreoffice-gnome libreoffice-gtk libreoffice-impress libreoffice-math libreoffice-ogltrans libreoffice-pdfimport libreoffice-style-breeze libreoffice-style-elementary libreoffice-style-galaxy libreoffice-writer"

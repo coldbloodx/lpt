@@ -39,10 +39,10 @@ def parseconf(conf="/opt/laworks/etc/install.conf"):
         fp = open(conf, 'r')
         content = fp.readlines()
         if not content: return None
-        content = [ line.strip()  for line in content if not line.startswith("#") ]
-        ret = eval( "{ %s }" % ( ",".join(content)))
+        content = [ line.strip()  for line in content if (not line.startswith("#")) and  (len(line.strip()) > 0) ]
+        ret = eval(' '.join(content))
         return ret
-    except:
+    except Exception, e:
         return None
 
 class CmdExecutor(object):

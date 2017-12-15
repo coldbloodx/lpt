@@ -221,20 +221,49 @@ class TableManager:
         
         #5. nodegroup table
         #ngname, osid, partid, provtype, uitype, namerule 
+        uitypes = [ UITYPE_GUI, UITYPE_CLI ]
+        provtypes = [ PROVTYPE_DISKED, PROVTYPE_DISKLESS ]
+
+        if self.conf.has_key('uitypes'):
+            invalid = False
+            for uitype in self.conf['uitypes']:
+                if uitype not in uitypes: 
+                    invalid = True
+                    break
+
+            if invalid == False:
+                uitypes = self.conf['uitypes']
+
+        
+        if self.conf.has_key('provtypes'):
+            invalid = False
+            for provtype in self.conf['provtypes']:
+                if provtype not in provtypes:
+                    invalid = True
+
+            if invalid == False:
+                provtypes = self.conf['provtypes']
+
         for osname in osnames:
             os = osdict[osname]
             if os.ostype == 'linux':
-                for uitype in [ UITYPE_GUI, UITYPE_CLI ]:
-                    for provtype in [ PROVTYPE_DISKED, PROVTYPE_DISKLESS ]:
+                for uitype in uitypes:
+                    for provtype in provtypes:
+                        #ignore diskless gui
                         if uitype == UITYPE_GUI and provtype == PROVTYPE_DISKLESS : continue
-                        if uitype == UITYPE_GUI and os.osname.lower() == 'rhel' : continue
-                        if provtype == PROVTYPE_DISKLESS and (os.osname.lower() in [ 'rhel', 'ubuntu' ]): 
-                            continue
+
+                        #ignore centos, rhel gui 
+                        if uitype == UITYPE_GUI and os.osname.lower() in [ 'centos', 'rhel'] : continue
+
+                        #if provtype == PROVTYPE_DISKLESS and (os.osname.lower() in [ 'centos', 'rhel', 'ubuntu' ]): 
+                        #    continue
+
                         ngname = "%s-%s-%s" % (os.osname, provtype.capitalize(), uitype.upper())
                         ngrule = "%s-%s###" % (os.osname, provtype) 
                         ng = NodeGroup(ngname, os.osid, disked_schema.schemaid, provtype, uitype, ngrule)
                         ng.networks.extend([provnet])
                         session.add(ng)
+
             elif os.ostype == 'windows':
                 winng = NodeGroup(os.osname, os.osid, win_schema.schemaid, PROVTYPE_WIN, UITYPE_GUI, "%s###" % (os.osname)) 
                 dualbootng = NodeGroup("%s-dualboot" % (os.osname), os.osid, dualboot_schema.schemaid, PROVTYPE_DUALBOOT, UITYPE_GUI, "dualboot###") 

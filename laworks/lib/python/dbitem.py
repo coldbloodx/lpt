@@ -124,18 +124,18 @@ class OS(Base):
     major  = Column(String(8), nullable=False)
     minor  = Column(String(8), nullable=False)
     ostype   = Column(String(8), nullable=False)
-    isoname = Column(String(32), nullable=True)
+    repo = Column(String(32), nullable=True)
 
-    def __init__(self, osname, major, minor, ostype, isoname):
+    def __init__(self, osname, major, minor, ostype, repo):
         self.osname = osname.lower()
         self.major  = major
         self.minor  = minor
         self.ostype = ostype
-        self.isoname = isoname
+        self.repo = repo
 
     def __repr__(self):
         return "<OS('%s', '%s', '%s', '%s', '%s', '%s')>" % (self.osid,
-                self.osname, self.major, self.minor, self.ostype, self.isoname)
+                self.osname, self.major, self.minor, self.ostype, self.repo)
 
 def makeos(vallist):
     """return an OS object from a given list or tuple"""
