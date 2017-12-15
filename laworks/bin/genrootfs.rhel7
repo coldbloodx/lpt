@@ -17,19 +17,18 @@ function prepare()
         exit 1
     fi
 
-    if ! ngls $name > /dev/null 2>&1 ; then
+    if ! ngls -g $ngname > /dev/null 2>&1 ; then
         echo "invalid ngname"
         exit 1
     fi
     
     #assign values to gvars
-    uitype=`ngls -g $ngname --valueonly -c uitype`
-    ngid=`ngls -g $ngname --valueonly -c ngid`
-    distro=`ngls -g $ngname --valueonly -c distro`
+    uitype=`ngls -g $ngname -c uitype --valueonly`
+    ngid=`ngls -g $ngname -c ngid --valueonly`
+    osname=`ngls -g $ngname -c os --valueonly`
+    repourl=`osls -o $osname -c repo --valueonly`
+    distro=`osls -o $osname -c distro --valueonly`
     fsdir=/tmp/$ngid.$uitype
-
-    #TODO: temp solution, the value should not be hard coded
-    repourl='http://9.111.251.179/centos7.4'
 
     mkdir -p $fsdir
 }
@@ -87,7 +86,7 @@ function packfs()
 _EOF
 
     cd $fsdir
-    tar czf /var/www/rootfs/$distro/${uitype}rootfs.tar.gz . -X $exlist
+    tar czf /var/www/rootfs/$distro/${ngname}.rootfs.tar.gz . -X $exlist
     cd -
 }
 
