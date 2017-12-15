@@ -1,0 +1,122 @@
+#!/bin/bash
+
+#bind mem sys to rootfs dir, like proc, dev, sys
+function prepare()
+{
+    laprofile=$LAROOT/bin/laworks.profile
+
+    if [ ! -f $laprofile ]; then
+        echo "not a lpt environment, exit"
+        exit 1
+    fi
+
+    . $laprofile
+
+    if [ "x$ngname" = "x" ]; then
+        echo "usage: $progname <ngname>" 1>&2
+        exit 1
+    fi
+
+    if ! ngls $name > /dev/null 2>&1 ; then
+        echo "invalid ngname"
+        exit 1
+    fi
+    
+    #assign values to gvars
+    uitype=`ngls -g $ngname --valueonly -c uitype`
+    ngid=`ngls -g $ngname --valueonly -c ngid`
+    distro=`ngls -g $ngname --valueonly -c distro`
+    fsdir=/tmp/$ngid.$uitype
+
+    #TODO: temp solution, the value should not be hard coded
+    repourl='http://9.111.251.179/centos7.4'
+
+    mkdir -p $fsdir
+}
+
+function createyumrepo()
+{
+    #create yum repo based on iso repo
+    mkdir -p $fsdir/etc/yum.repos.d/
+    cat > $fsdir/etc/yum.repos.d/cd.repo << _EOF
+[$distro]
+name=$distro
+baseurl=$repourl
+enabled=1
+gpgcheck=0
+_EOF
+
+}
+
+#install base system
+function createbasefs()
+{
+    #init rpm database
+    rpm --root $fsdir --initdb
+
+    createyumrepo 
+
+    pkgs="${distro}-release yum"
+
+    yum -y --installroot=$fsdir install $pkgs
+}
+
+#setup pkgs
+function setuppkgs()
+{
+    echo 
+}
+
+#clean fs
+function cleanfs()
+{
+    #remove auto generated repos
+    rm -fr $fsdir/etc/yum.repos.d/{CentOS*,redhat*}
+}
+
+#pack fs
+function packfs()
+{
+    echo "pack fs"
+    exlist=/tmp/exlist
+
+    cat << _EOF > $exlist
+    proc/*
+    dev/*
+    tmp/*
+_EOF
+
+    cd $fsdir
+    tar czf /var/www/rootfs/$distro/${uitype}rootfs.tar.gz . -X $exlist
+    cd -
+}
+
+###########################
+#####      Main      ######
+###########################
+
+# global vars
+progname=$0
+ngname=$1
+
+# global vars declaration
+distro=''
+repourl=''
+ngid=''
+uitype=''
+fsdir=''
+
+# init gvars
+prepare
+
+# create base fs
+createbasefs
+
+# do some package setup
+setuppkgs
+
+# do some cleanup work
+cleanfs
+
+# pack the fs to proper place
+packfs
