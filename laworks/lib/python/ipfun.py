@@ -28,7 +28,17 @@ def getnicinfo(nicname):
         return None
 
     mac = out[0].strip().split()[-1]
-    return [ip, broadcast, mask, mac]
+    
+    #get lines like below
+    #0.0.0.0         9.111.251.2     0.0.0.0         UG    0      0        0 ens160
+    out, err, ret = runcmd("route -n |grep 'UG.*%s'" % (nic))
+    gateway = ''
+    if ret:
+        gateway = ip
+    else:
+        gateway = out[0].strip().split()[1]
+
+    return [ip, broadcast, mask, mac, gateway]
 
 def get_available_ips(dbconn):
     provnet = dbconn.query(Network).filter_by(nwtype=NETTYPE_PROV).first()
@@ -45,6 +55,12 @@ def get_available_ips(dbconn):
     ips.sort(ipsort)
 
     return ips
+
+def onnet(ipaddr, netaddr, netmask):
+    ipnet = IP(ipaddr).make_net(netmask)
+    net = IP(netaddr).make_net(netmask)
+
+    return ipnet == net
 
 def ipsort(ipa, ipb):
     if ipa == ipb:

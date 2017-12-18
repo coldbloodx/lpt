@@ -5,7 +5,7 @@ import os
 from Cheetah.Template import Template
 
 from IPy import IP
-from ipfun import ipsort, get_available_ips
+from ipfun import ipsort, get_available_ips, onnet
 from dbhelper import *
 from dbitem import *
 from makeconfig import makehosts
@@ -23,14 +23,110 @@ def get_available_num(numbers, maxnum):
 
     return 'zzz'
 
+
+def importnodes(dbconn, deffile, nodegroup):
+    if not os.path.isfile(deffile):
+        return False, "Cannot find specified file: %s" % deffile
+
+    ng = get_ng_byname(dbconn, nodegroup)
+    if not ng :
+        return False, "Can not find such nodegroup: %s" % nodegroup
+
+    fp = open(deffile, "r")
+    content = fp.readlines()
+    fp.close()
+
+    todonodes = {}
+
+    netmap = get_net_map(dbconn)
+    netnames = netmap.keys()
+    
+    for lineno, line in enumerate(content):
+        #remove heading and tailing spaces
+        if line: line = line.strip()
+        #remove tailing "\n"
+        if line: line = line.strip("\n")
+
+        # for empty line
+        if not line:
+            continue
+
+        # for line starts with a "#"
+        if line.startswith("#"):
+            continue
+
+        mac, nodename, nodenicinfo = line.split(";")
+
+        #print "lineno: %s, nodename: %s, mac: %s, nics: %s" % (lineno, nodename, mac, nodenicinfo)
+        
+        #check duplicate entry in deffile.
+        if todonodes.has_key(nodename):
+            errout("line: %s, node: %s duplicate with: %s, ignore" % todonodes[nodename]['lineno'])
+            continue
+        
+        nodenics = {  } 
+        if nodenicinfo:
+            # nicname1@netname1,nicname2@netname2...
+            nicinfolist = nodenicinfo.split(',')
+            
+            badnicinfo = False
+            for nicinfo in nicinfolist:
+                # no nic info
+                if(nicinfo.find('@') < 0):
+                    badnicinfo = True
+                    break
+
+                nicip, nicname= nicinfo.split("@")
+
+                if (not onnet(nicip, netmap['provision'].network, netmap['provision'].netmask)) and \
+                (not onnet(nicip, netmap['public'].network, netmap['public'].netmask)):
+                    errout("IP: %s is on neither public network nor private network")
+                    badnicinfo = True
+                    break
+
+                if onnet(nicip, netmap['provision'].network, netmap['provision'].netmask):
+                    provnic = Nic(nicname, mac, nicip, 'dummynid', netmap['provision'].netid, NICTYPE_BOOT) 
+                    nodenics['provision'] = provnic
+
+                if onnet(nicip, netmap['public'].network, netmap['public'].netmask):
+                    pubnic = Nic(nicname, None, nicip, 'dummynid', netmap['public'].netid, NICTYPE_PUBLIC) 
+                    nodenics['public'] = pubnic
+
+            if badnicinfo:
+                continue
+
+        else:
+            #TODO: empty nodenicinfo line
+            pass
+        
+        todonodes[nodename] = { }
+        todonodes[nodename]['mac'] = mac
+        todonodes[nodename]['lineno'] = lineno
+
+        todonodes[nodename]['nics'] = nodenics
+    
+    
+    for nodename,attrdict in todonodes.iteritems():
+        node = Node(nodename, ng.ngid, STATUS_IMPORTED)
+        dbconn.add(node)
+        dbconn.commit()
+        for nic in attrdict['nics'].values():
+            nic.nid = node.nid
+            dbconn.add(nic)
+        dbconn.commit()
+
+    #print todonodes;
+
+    return True, None
+
 def importnode(dbconn, mac, nodegroup, iface='eth0'):
     ng = get_ng_byname(dbconn, nodegroup)
     if not ng :
-        return False, "Can not find such nodegroup"
+        return False, "Can not find such nodegroup: %s" % nodegroup
 
     nic = get_nic_bymac(dbconn, mac)
     if nic:
-        return False, "The nic has been already used by another node"
+        return False, "The mac: %s has been already used by another node" % mac
 
     network = None
     for n in ng.networks:
@@ -41,7 +137,6 @@ def importnode(dbconn, mac, nodegroup, iface='eth0'):
     nodename = getnext_nodename(dbconn, ng.ngid)
     node = Node(nodename, ng.ngid, STATUS_IMPORTED)
     dbconn.add(node)
-    dbconn.commit()
     
     ips = get_available_ips(dbconn)
     if not ips:
@@ -212,7 +307,7 @@ def removenodes(namelist):
 
     maccmds = [ "%s.cmd" % nic.mac.replace(":", "-") for nic in nics ]
     cmddir = "%s/autoinstall/" % (get_samba_dir(dbconn))
-    rmcmd = "cd %s; rm -fr %s " % (cmddir, " ".join(maccmds))
+    rmcmd = "cd %s > /dev/null 2>&1; rm -fr %s " % (cmddir, " ".join(maccmds))
     os.system(rmcmd) 
     
     for node in nodes:

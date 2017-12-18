@@ -49,7 +49,7 @@ class Nic(Base):
 
     nicid   = Column(Integer(), primary_key=True)
     nicname = Column(String(8), nullable=False)
-    mac     = Column(String(20), unique=True, nullable=False)
+    mac     = Column(String(20), unique=True, nullable=True)
     ip      = Column(String(20), unique=True, nullable=False)
     nid  = Column(Integer(), ForeignKey("node.nid"))
     netid   = Column(Integer(), ForeignKey("network.netid"))
@@ -79,15 +79,13 @@ class Network(Base):
     network = Column(String(20), nullable=False)
     netmask = Column(String(20), nullable=False)
     broadcast = Column(String(20), nullable=False)
+    nwtype  = Column(String(16), nullable=False)
     gateway = Column(String(20))
-    dns     = Column(String(20))
     drange  = Column(String(40))
     srange  = Column(String(40))
     tftpsrv = Column(String(20), default="")
-    nwtype  = Column(String(16), nullable=False)
     
-    def __init__(self, netname, network, netmask, broadcast, drange="", srange="",
-            nwtype=NETTYPE_PROV, gateway="", dns="",  tftpsrv=""):
+    def __init__(self, netname, network, netmask, broadcast, nwtype=NETTYPE_PROV, gateway="", drange="", srange="", tftpsrv=""):
         self.netname = netname
         self.network = network
         self.netmask = netmask
@@ -97,12 +95,11 @@ class Network(Base):
         self.drange = drange
         self.srange = srange
         self.tftpsrv = tftpsrv
-        self.dns     = dns
 
     def __repr__(self):
-        return "<Network('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')>" % (self.netid,
+        return "<Network('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')>" % (
                 self.netname, self.network, self.netmask, self.broadcast, self.nwtype, self.gateway,
-                self.drange, self.srange, self.tftpsrv, self.dns)
+                self.drange, self.srange, self.tftpsrv)
 
 class Script(Base):
     __tablename__ = "script"

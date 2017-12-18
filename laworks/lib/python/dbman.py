@@ -136,7 +136,7 @@ class TableManager:
         Session = sessionmaker(bind=self.engine)
         session = Session()
 
-        #nicfinfo: ip, broadcast, mask, mac 
+        #nicinfo: ip, broadcast, mask, mac, gateway
         pubnicinfo = getnicinfo(self.conf['pubnic'])
         provnicinfo = getnicinfo(self.conf['provnic'])
 
@@ -162,13 +162,18 @@ class TableManager:
 
         if self.conf.has_key("domain") and validate_domain(self.conf["domain"]):
             domain = self.conf['domain']
+        
+        defgateway = provnicinfo[4]
+        
+        if self.conf.has_key("defgateway") and self.conf["defgateway"].lower() == 'pubnic':
+            defgateway = pubnicinfo[4]
 
         session.add_all([
             Global("master", provip), 
             Global("provnic", self.conf['provnic']),
             Global("dnsserver", self.conf['dns']), 
             Global("tftpserver", provip),
-            Global("gateway", provip), 
+            Global("gateway", defgateway), 
             Global("ntpserver", provip),
             Global("sambashare", "/share"),
             Global("domain", domain)])
@@ -203,11 +208,13 @@ class TableManager:
             errout("Static range in config file not found")
             sys.exit(1)
          
-        provnet = Network("provison", str(provnetwork.net()), str(provnetwork.netmask()), 
-                str(provnetwork.broadcast()), self.conf['drange'], self.conf['srange'],
-                NETTYPE_PROV, provip, self.conf['dns'], provip)
+        # netname, network, netmask, broadcast, nwtype, gateway, drange, srange, tftpsrv
+        provnet = Network("provision", str(provnetwork.net()), str(provnetwork.netmask()), 
+                str(provnetwork.broadcast()), NETTYPE_PROV, provnicinfo[4], 
+                self.conf['drange'], self.conf['srange'], provip)
+
         pubnet  = Network("public", str(pubnetwork.net()), str(pubnetwork.netmask()), str(pubnetwork.broadcast()), 
-                '', '', NETTYPE_PUB)
+                NETTYPE_PUB, pubnicinfo[4])
 
         session.add_all([provnet, pubnet])
         session.commit();

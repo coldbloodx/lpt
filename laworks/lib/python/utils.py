@@ -30,6 +30,10 @@ def getmyos():
 def errout(msg):
     sys.stderr.write("%s\n" % msg)
 
+def errexit(msg):
+    sys.stderr.write("%s\n" % msg)
+    sys.exit(1)
+
 def runcmd(cmd):
     executor = CmdExecutor()
     return  executor.run_cmd(cmd)

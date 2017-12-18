@@ -8,6 +8,7 @@ from dbitem import *
 from dbhelper import *
 from constant import *
 from nodeoperation import *
+from utils import errexit
 from app import LAApp
 from dbman  import ConnManager as DBConnManager
 
@@ -22,10 +23,12 @@ class LANodeImportApp(LAApp):
                 callback=self.showversion, help="version")
         self.parser.add_option("-g", "--ngname", action="store", 
                 dest="ngname", help="nodegroup name", metavar="nodegroup")
-        #self.parser.add_option("-i", "--interface", action="store", 
-        #        dest="iface", help="interface name", metavar="interface")
         self.parser.add_option("-m", "--mac", action="store", 
                 dest="mac", help="mac address of boot nic on compute node", metavar="mac")
+        self.parser.add_option("-i", "--nic", action="store", 
+                dest="iface", help="interface of the mac address", metavar="nic")
+        self.parser.add_option("-f", "--deffile", action="store", 
+                dest="deffile", help="file contains the node definition", metavar="deffile")
 
         if len(sys.argv[1:]) < 1:
             self.parser.print_help()
@@ -36,18 +39,29 @@ class LANodeImportApp(LAApp):
     def run(self):
         self.parseargs()
 
-        for opt in [bool(self.options.ngname), #bool(self.options.iface), 
-                bool(self.options.mac)]:
-            if not opt:
-                self.parser.print_help()
-                sys.exit(-1)
+        if not bool(self.options.ngname):
+            errexit("nodegroup name must be specified")
 
+        if bool(self.options.mac) and bool(self.options.deffile):
+            errexit("only one of mac address and deffile can be specified")
+
+        iface = 'eth0'
+        if self.options.iface:
+            iface = self.options.iface
+
+        ret = ''
+        why = ''
         dbconn = DBConnManager.get_session()
-        (ret, why) = importnode(dbconn, self.options.mac, self.options.ngname)
+
+        if self.options.mac:
+            (ret, why) = importnode(dbconn, self.options.mac, self.options.ngname, iface)
+
+
+        if self.options.deffile:
+            (ret, why) = importnodes(dbconn, self.options.deffile, self.options.ngname)
 
         if not ret:
-            self.stderrmsg(why)
-            sys.exit(-1)
+            errexit(why)
 
         sys.exit(0)
 

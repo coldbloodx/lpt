@@ -23,6 +23,7 @@ NETTYPE_OTHER     = "other"
 
 NICTYPE_BOOT      = "boot"
 NICTYPE_OTHER     = "other"
+NICTYPE_PUBLIC    = "public"
 
 LAWORKSROOT_DIR       = "/opt/laworks"
 LAWORKSTMPL_DIR       = "%s/etc/templates" % (LAWORKSROOT_DIR)

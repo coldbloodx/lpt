@@ -2,6 +2,16 @@
 
 from dbitem import *
 
+
+def get_net_map(dbconn):
+    netmap = {} 
+    networks = dbconn.query(Network).all()
+
+    for network in networks:
+        netmap[network.netname] = network
+
+    return netmap
+
 def get_prov_networks(dbconn):
     provnetworks = dbconn.query(Network).filter_by(nwtype="prov").all()
     return provnetworks
