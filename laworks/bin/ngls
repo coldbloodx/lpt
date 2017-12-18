@@ -12,7 +12,7 @@ class LANodeGroupLsApp(LAApp):
         LAApp.__init__(self, debug=False)
         self.force_single_instance()
         self.cols = []
-        self.vcols = [ 'ngid', 'ngname', 'provtype', 'uitype', 'distro', 'os' ]
+        self.vcols = [ 'ngid', 'ngname', 'provtype', 'uitype', 'namerule', 'distro', 'os' ]
     
     def parse_args(self):
 
@@ -59,6 +59,7 @@ class LANodeGroupLsApp(LAApp):
                 "ngname"   : ng.ngname,
                 "provtype" : ng.provtype,
                 "uitype"   : ng.uitype,
+                "namerule" : ng.namerule,
                 "distro"   : ng.os.distro,
                 "os"       : ng.os.osname
                 }

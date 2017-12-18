@@ -261,7 +261,7 @@ class TableManager:
                         #    continue
 
                         ngname = "%s-%s-%s" % (os.osname, provtype.capitalize(), uitype.upper())
-                        ngrule = "%s-%s###" % (os.osname, provtype) 
+                        ngrule = "%s-%s-%s-%s###" % (os.distro, os.major, os.minor, provtype) 
                         ng = NodeGroup(ngname, os.osid, disked_schema.schemaid, provtype, uitype, ngrule)
                         ng.networks.extend([provnet])
                         session.add(ng)

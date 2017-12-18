@@ -55,8 +55,7 @@ function createbasefs()
 
     createyumrepo 
 
-    pkgs="${distro}-release yum"
-
+    pkgs="${distro}-release yum kernel man wget passwd vim openssh-server openssh-clients grub2-pc.x86_64 grub2-tools.x86_64 initscripts net-tools"
     yum -y --installroot=$fsdir install $pkgs
 }
 
@@ -86,7 +85,7 @@ function packfs()
 _EOF
 
     cd $fsdir
-    tar czf /var/www/rootfs/$distro/${ngname}.rootfs.tar.gz . -X $exlist
+    tar czf /var/www/rootfs/$distro/${uitype}rootfs.tar.gz . -X $exlist
     cd -
 }
 

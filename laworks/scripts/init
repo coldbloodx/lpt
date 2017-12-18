@@ -116,7 +116,6 @@ initnodeinfo()
     echo "NODENAME: $nodename"
     echo "DUALBOOT: $dualboot"
     echo "=====Node Information====="
-
 }
 
 initdisk()
@@ -595,6 +594,5 @@ case $provtype in
         ;;
     *)
         echo "$provtype is unknow, entering debug mode"
-        debug
         ;;
 esac
