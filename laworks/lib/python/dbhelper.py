@@ -2,6 +2,29 @@
 
 from dbitem import *
 
+def get_global_records(dbconn, keylist):
+
+    recs = dbconn.query(Global).all()
+    ret = { "found" : {} ,
+            "miss" : [] }
+
+    found = {} 
+    fkeys = []
+
+    for rec in recs:
+        if rec.key in keylist:
+            fkeys.append(rec.key)
+            found[rec.key] = rec.value
+    
+    origkeyset = set(keylist)
+    fkeyset = set(fkeys)
+
+    misskeylist = list(origkeyset - fkeyset)
+
+    ret['found'] = found
+    ret['miss'] = misskeylist
+
+    return ret
 
 def get_net_map(dbconn):
     netmap = {} 

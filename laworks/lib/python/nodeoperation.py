@@ -23,7 +23,6 @@ def get_available_num(numbers, maxnum):
 
     return 'zzz'
 
-
 def importnodes(dbconn, deffile, nodegroup):
     if not os.path.isfile(deffile):
         return False, "Cannot find specified file: %s" % deffile
@@ -199,7 +198,7 @@ def getnext_nodename(dbconn, ngid):
     return "%s-%s" % (prefix, nextnum)
 
 
-def gennodeinfo(node):
+def gennodeinfo(dbconn, node):
     nodeinfo = '#!/bin/sh\n'
     nid = node.nid
     nodename = node.nodename
@@ -209,23 +208,42 @@ def gennodeinfo(node):
     distro = node.nodegroup.os.osname.lower()
     bootnic = ''
     nicstrs = []
+
     for nic in node.nics:
-        #nicname1:network1:ip1:netmask1:broadcast1:gateway1:dns1
-        tempstr = "%s:%s:%s:%s:%s:%s:%s" % (nic.nicname, nic.network.network, nic.ip,
-                nic.network.netmask, nic.network.broadcast, nic.network.gateway, nic.network.dns)
+        #nicname1:network1:ip1:netmask1:broadcast1:gateway1
+        tempstr = "%s:%s:%s:%s:%s:%s" % (nic.nicname, nic.network.network, nic.ip,
+                nic.network.netmask, nic.network.broadcast, nic.network.gateway)
+
         if nic.nictype == NICTYPE_BOOT:
             bootnic = nic.nicname
+
         nicstrs.append(tempstr)
 
     nicinfo = ";".join(nicstrs)
 
     dualboot = node.nodegroup == PROVTYPE_DUALBOOT
 
+    gkeys = ['dns1', 'dns2', 'gateway']
+    vmap = get_global_records(dbconn, gkeys)
+
+    if len(vmap['miss']) > 0:
+        raise Exception("can not get values for key: %s" % ",".join(vmap['miss']))
+
+    gvmap = vmap['found']
+
     #add all content
     infotmpl = Template(file=NODEINFO_TMPL,
-            searchList=[{'NID': nid, 'NODENAME':nodename, 'NGID': ngid, 
-                'NICINFO': nicinfo, 'DUALBOOT': dualboot, 'BOOTNIC': bootnic,
-                'PROVTYPE': provtype, 'UITYPE': uitype, 'DISTRO': distro}])
+            searchList=[{'NID': nid, 'NODENAME':nodename, 
+                'NGID'      : ngid, 
+                'NICINFO'   : nicinfo, 
+                'DUALBOOT'  : dualboot, 
+                'BOOTNIC'   : bootnic,
+                'PROVTYPE'  : provtype, 
+                'UITYPE'    : uitype, 
+                'DISTRO'    : distro, 
+                'GATEWAY'   : gvmap['gateway'], 
+                'DNS1'      : gvmap['dns1'],
+                'DNS2'      : gvmap['dns2'] }])
 
     content = str(infotmpl)
     nodeinfo = nodeinfo + content

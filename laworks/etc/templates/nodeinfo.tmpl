@@ -9,10 +9,12 @@ export ngid=$NGID
 export provtype=$PROVTYPE
 export uitype=$UITYPE
 export distro=$DISTRO
-
+export dns1=$DNS1
+export dns2=$DNS2
+export defgateway=$GATEWAY
 
 #line like 
-#nicname1:network1:ip1:netmask1:broadcast1:gateway1:dns1;nicname2:network2:ip2:netmask2:broadcast2:gateway2:dns2
+#nicname1:network1:ip1:netmask1:broadcast1:gateway1;nicname2:network2:ip2:netmask2:broadcast2:gateway2
 #example: eth0:192.168.9.0:192.168.9.1:255.255.255.0:192.168.9.255:192.168.9.1:192.168.9.1
 export nics='$NICINFO'
 export dualboot=$DUALBOOT

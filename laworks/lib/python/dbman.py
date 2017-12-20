@@ -171,7 +171,8 @@ class TableManager:
         session.add_all([
             Global("master", provip), 
             Global("provnic", self.conf['provnic']),
-            Global("dnsserver", self.conf['dns']), 
+            Global("dns1", self.conf['dns1']), 
+            Global("dns2", self.conf['dns2']), 
             Global("tftpserver", provip),
             Global("gateway", defgateway), 
             Global("ntpserver", provip),
