@@ -115,6 +115,10 @@ initnodeinfo()
     echo "DISTRO  : $distro"
     echo "NODENAME: $nodename"
     echo "DUALBOOT: $dualboot"
+    echo "DNS1    : $dns1"
+    echo "DNS2    : $dns2"
+    echo "DOMAIN  : $domain"
+    echo "GATEWAY : $defgateway"
     echo "=====Node Information====="
 }
 
@@ -188,11 +192,11 @@ config_rhel_network()
         echo "====="
         echo "interface: $interface"
         echo "ip : $ip"
-        echo "dns: $dns"
         echo "network: $network"
         echo "netmask: $netmask"
         echo "broadcast: $broadcast"
         echo "gateway: $gateway"
+        echo "====="
         echo 
 
         #format the file
@@ -204,8 +208,8 @@ TYPE="Ethernet"
 DEVICE="$interface"
 IPADDR="$ip"
 NETMASK="$netmask"
-GATEWAY="$gateway"
 BROADCAST="$broadcast"
+GATEWAY="$gateway"
 _EOF
         echo "nameserver $dns" >> $dnsconf
     done
@@ -242,34 +246,46 @@ _EOF
         netmask=`echo $nic |awk -F":" '{print $4}'`
         broadcast=`echo $nic |awk -F":" '{print $5}'`
         gateway=`echo $nic |awk -F":" '{print $6}'`
-        dns=`echo $nic |awk -F":" '{print $7}'`
 
         echo "====="
         echo "interface: $interface"
         echo "ip : $ip"
-        echo "dns: $dns"
+        echo "defgateway: $defgateway"
         echo "network: $network"
         echo "netmask: $netmask"
         echo "broadcast: $broadcast"
         echo "gateway: $gateway"
-        echo 
+        echo "====" 
 
         #format the file
         cat <<_EOF >> $networkconf
 auto $interface
-    iface $interface inet static
+iface $interface inet static
     address $ip
     netmask $netmask
     network $network
     broadcast $broadcast
 _EOF
 
-        if [ "x$gateway" != "x" ]; then 
+        if [ "x$gateway" == "x$defgateway" ]; then 
             echo "    gateway $gateway" >> $networkconf    
-        fi
-        if [ "x$dns" != "x" ]; then
+            
+            dns=""
+            if [ "x$dns1" != "x" ]; then
+                dns="$dns1"
+            fi
+
+            if [ "x$dns2" != "x" ]; then
+                if [ "x$dns" == "x" ]; then
+                    dns="$dns2"
+                else
+                    dns="$dns,$dns2"
+                fi
+            fi
+
             echo "    dns-nameservers $dns" >> $networkconf
         fi
+
         # following line is available on busy-box but not available on bash
         echo -e "\n" >> $networkconf
     done
@@ -278,7 +294,6 @@ _EOF
     echo "updating hostname to $nodename"
     hnamefile=$sysroot/etc/hostname
     echo $nodename > $hnamefile
-
 }
 
 update_initrd_grub()
