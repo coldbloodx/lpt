@@ -173,6 +173,7 @@ class TableManager:
             Global("provnic", self.conf['provnic']),
             Global("dns1", self.conf['dns1']), 
             Global("dns2", self.conf['dns2']), 
+            Global("password", self.conf['password']),
             Global("tftpserver", provip),
             Global("gateway", defgateway), 
             Global("ntpserver", provip),

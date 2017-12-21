@@ -47,6 +47,20 @@ _EOF
 
 }
 
+function mountmemfs()
+{
+    mount --bind /proc $fsdir/proc
+    mount --bind /dev $fsdir/dev
+    mount --bind /sys $fsdir/sys
+}
+
+function umountmemfs()
+{
+    umount $fsdir/sys
+    umount $fsdir/dev
+    umount $fsdir/proc
+}
+
 #install base system
 function createbasefs()
 {
@@ -55,8 +69,33 @@ function createbasefs()
 
     createyumrepo 
 
+    basepkgs="yum"
+    yum -y --installroot=$fsdir install $basepkgs
+
+    mountmemfs
     pkgs="${distro}-release yum kernel man wget passwd vim openssh-server openssh-clients grub2-pc.x86_64 grub2-tools.x86_64 initscripts net-tools"
-    yum -y --installroot=$fsdir install $pkgs
+
+    rm -fr $fsdir/etc/yum.repos.d/{CentOS*,redhat*}
+
+cat > $fsdir/env.sh << _EOF
+#!/bin/bash
+
+#uncomment below lines to check yum repo in chroot environment
+#ls -l /etc/yum.repos.d
+#cat /etc/yum.repos.d/cd.repo
+
+#clean repo
+yum clean all
+
+#install necessary packages
+yum -y install $pkgs
+exit 0
+
+_EOF
+
+    chmod 755 $fsdir/env.sh
+
+    chroot $fsdir /bin/bash -c "/bin/bash env.sh"
 }
 
 #setup pkgs
@@ -70,6 +109,7 @@ function cleanfs()
 {
     #remove auto generated repos
     rm -fr $fsdir/etc/yum.repos.d/{CentOS*,redhat*}
+    umountmemfs
 }
 
 #pack fs
