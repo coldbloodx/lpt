@@ -48,17 +48,17 @@ buildenv()
     $LAROOT/libexec/initdb.py
     
     echo "Generating RAM disk..."
-    #geninitrd.sh
+    $LAROOT/libexec/geninitrd.sh
 
     echo "Generating rootfs..."
     #genrootfs.sh ubuntu-Disked-GUI
     #genrootfs.sh ubuntu-Disked-CLI
     
     if [ ! -f $LAROOT/bak ]; then
-        mkdir -p $LAROOT/bak
-        cp /etc/default/tftpd-hpa $LAROOT/bak
-        cp /etc/dhcp/dhcpd.conf $LAROOT/bak
-        cp /etc/apache2/sites-enabled/000-default.conf $LAROOT/bak
+        mkdir -p $LAROOT/etc/bak
+        cp /etc/default/tftpd-hpa $LAROOT/etc/bak
+        cp /etc/dhcp/dhcpd.conf $LAROOT/etc/bak
+        cp /etc/apache2/sites-enabled/000-default.conf $LAROOT/etc/bak
     fi
     
     mkconfig -t tftp > /etc/default/tftpd-hpa
@@ -73,6 +73,7 @@ buildenv()
     mkdir -p /var/www/others
     ln -sf $LAROOT/profiles/ /var/www/
     ln -sf /usr/lib/cgi-bin/ /var/www/
+    ln -sf $LAROOT/libexec/nodeinfo.cgi.py $LAROOT/bin/niidump
     cp -f $LAROOT/libexec/nodeinfo.cgi.py  /usr/lib/cgi-bin/
     
     ln -sf $LAROOT/libexec/rc.laworks /var/www/others/
@@ -156,4 +157,3 @@ configsamba
 
 #config windows provision
 configwin
-
