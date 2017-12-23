@@ -45,8 +45,8 @@ done
 
 # copy init to DESTDIR
 
-cp -f $LAROOT/scripts/init $DESTDIR
-cp -f $LAROOT/etc/inittab $DESTDIR/etc/
+cp -f $LAROOT/etc/mkinitrd/init $DESTDIR
+cp -f $LAROOT/etc/mkinitrd/inittab $DESTDIR/etc/
 
 # busybox tools
 ln -sf /bin/busybox $DESTDIR/sbin/ifconfig

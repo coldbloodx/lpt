@@ -6,7 +6,7 @@ if [ "x$LAROOT" == "x" ]; then
 fi
 
 LAHOME=$LAROOT
-SCRIPTSDIR=$LAHOME/scripts/misc
+SCRIPTSDIR=$LAHOME/etc/mkinitrd/
 SCRIPT=laworks.hook
 HOOKDIR=/usr/share/initramfs-tools/hooks
 DESTDIR=/var/lib/tftpboot/
