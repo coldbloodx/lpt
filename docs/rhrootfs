@@ -1,5 +1,0 @@
-#!/bin/bash
-mkdir rhroot/{bin,sbin,lib,lib64,etc,var,usr,opt,dev,tmp}
-
-#necessary packages
-kernel yum man wget passwd vim openssh-server openssh-clients
