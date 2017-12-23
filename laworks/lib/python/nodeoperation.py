@@ -39,6 +39,7 @@ def importnodes(dbconn, deffile, nodegroup):
 
     netmap = get_net_map(dbconn)
     netnames = netmap.keys()
+    node_bootnic_map =  {}
     
     for lineno, line in enumerate(content):
         #remove heading and tailing spaces
@@ -87,6 +88,9 @@ def importnodes(dbconn, deffile, nodegroup):
                     provnic = Nic(nicname, mac, nicip, 'dummynid', netmap['provision'].netid, NICTYPE_BOOT) 
                     nodenics['provision'] = provnic
 
+                    # fill the map for pxe file creation
+                    node_bootnic_map[nodename] = provnic
+
                 if onnet(nicip, netmap['public'].network, netmap['public'].netmask):
                     pubnic = Nic(nicname, None, nicip, 'dummynid', netmap['public'].netid, NICTYPE_PUBLIC) 
                     nodenics['public'] = pubnic
@@ -115,6 +119,29 @@ def importnodes(dbconn, deffile, nodegroup):
         dbconn.commit()
 
     #print todonodes;
+
+    #generate pxe file
+    masterip = get_master_ip(dbconn)
+    
+    for node,bootnic in node_bootnic_map.iteritems():
+        # gengerate file content
+        pxetmpl = Template(file=NETBOOT_TMPL, searchList=[{'parentip': masterip, 'ip':bootnic.ip, 'netmask': bootnic.network.netmask}])
+        content = str(pxetmpl)
+
+        # generate pxe file
+        macfilename = "01-%s" % (bootnic.mac.replace(":", "-"))
+        macfile = "%s/%s" % (PXEFILE_DIR, macfilename.lower())
+        target = file(macfile, 'w')
+        target.writelines(content)
+        target.close()
+        os.chmod(macfile, 0666)
+
+    #generate /etc/hosts
+    hosts = makehosts(dbconn)
+    hostsfp = open("/etc/hosts", 'w')
+    hostsfp.writelines(hosts)
+    hostsfp.writelines("\n")
+    hostsfp.close()
 
     return True, None
 
