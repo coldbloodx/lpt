@@ -1,0 +1,59 @@
+#!/bin/sh
+
+PREREQ="klibc"
+
+prereqs()
+{
+	echo "$PREREQ"
+}
+
+case $1 in
+# get pre-requisites
+prereqs)
+	prereqs
+	exit 0
+	;;
+esac
+
+echo "processing laworks related files"
+# check some binaryies
+binaries="parted busybox tune2fs mke2fs mount.nfs mkfs.ntfs mke2fs fusermount"
+PATH=$PATH:/usr/sbin
+
+flag=0
+for cmd in $binaries ; do
+    if ! which $cmd > /dev/null 2>&1; then
+        echo "$cmd is not installed, please install it first!"
+        flag=1
+    fi  
+done
+
+if [ $flag = 1 ]; then
+    exit 1
+fi
+
+. /usr/share/initramfs-tools/hook-functions
+
+# we must delete original busybox first, or we can not copy ours to DESTDIR
+# should be fixed by add some variable instead of hard code here
+rm -fr $DESTDIR/bin/busybox
+
+# copy binaries to /bin
+for cmd in $binaries; do
+    copy_exec `which $cmd` /bin/$cmd
+done
+
+# copy init to DESTDIR
+
+cp -f $LAROOT/scripts/init $DESTDIR
+cp -f $LAROOT/etc/inittab $DESTDIR/etc/
+
+# busybox tools
+ln -sf /bin/busybox $DESTDIR/sbin/ifconfig
+ln -sf /bin/busybox $DESTDIR/sbin/tar
+ln -sf /bin/busybox $DESTDIR/sbin/route
+# disable Predictable Network Interface
+mkdir -p $DESTDIR/etc/udev/rules.d/
+ln -s /dev/null $DESTDIR/etc/udev/rules.d/80-net-setup-link.rules
+
+echo "done..."
