@@ -3,4 +3,4 @@ build-essential tree ctags cscope
 git-core  subversion 
 nfs-kernel-server nfs-common samba 
 python-sqlalchemy python-cheetah  python-setuptools python-nose python-dev  python-pymysql python-ipy python-mysqldb python-sqlalchemy* python-unipath
-yum rpm createrepo plymouth-label
+yum rpm createrepo plymouth-label db-util
