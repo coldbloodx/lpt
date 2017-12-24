@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#bind mem sys to rootfs dir, like proc, dev, sys
 function prepare()
 {
     laprofile=$LAROOT/bin/laworks.profile
@@ -31,7 +30,7 @@ function prepare()
     fsdir=/tmp/$ngid.$uitype
     yumconf=$fsdir/etc/yum.repos.d/cd.repo
 
-    password='letmein'
+    password=`gls -k password -c value --valueonly`
 
     #remove old rootfs
     rm -fr $fsdir
@@ -58,6 +57,7 @@ _EOF
 
 function mountmemfs()
 {
+    #bind mem sys to rootfs dir, like proc, dev, sys
     mkdir -p $fsdir/{proc,dev,sys}
     mount --bind /proc $fsdir/proc 
     mount --bind /dev $fsdir/dev 
@@ -154,6 +154,7 @@ progname=$0
 ngname=$1
 
 # global vars declaration
+osname=''
 distro=''
 repourl=''
 ngid=''

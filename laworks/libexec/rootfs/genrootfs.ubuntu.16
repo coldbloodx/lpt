@@ -1,75 +1,66 @@
 #!/bin/bash
 
-# by Leo.C.Wu 2013 copyright by LAWorks
+function prepare()
+{
+    laprofile=$LAROOT/bin/laworks.profile
 
-#if [ -d $rootfsdir ]; then
-#    echo "$fsdir exists, all contents in it should be removed. "
-#fi
+    if [ ! -f $laprofile ]; then
+        echo "not a lpt environment, exit"
+        exit 1
+    fi
 
-password=letmein
-#apturl=http://mirrors.163.com/ubuntu/
-apturl=http://itaas:itaas@9.111.113.25/ubuntu/
+    . $laprofile
 
-ipkgs="linux-image-generic openssh-server vim bash-completion tree subversion build-essential git-core nfs-common ctags cscope  libc6-dev"
-rpkgs="thunderbird-gnome-support thunderbird libreoffice-avmedia-backend-gstreamer libreoffice-base-core libreoffice-calc libreoffice-common libreoffice-core libreoffice-draw libreoffice-gnome libreoffice-gtk libreoffice-impress libreoffice-math libreoffice-ogltrans libreoffice-pdfimport libreoffice-style-breeze libreoffice-style-elementary libreoffice-style-galaxy libreoffice-writer"
+    if [ "x$ngname" = "x" ]; then
+        echo "usage: $progname <ngname>" 1>&2
+        exit 1
+    fi
 
-which ngls > /dev/null 2>&1
-if [ "$?" != "0" ]; then
-    echo "Can not find ngls"
-    exit 1
-fi
+    if ! ngls -g $ngname > /dev/null 2>&1 ; then
+        echo "invalid ngname"
+        exit 1
+    fi
+    
+    #assign values to gvars
+    uitype=`ngls -g $ngname -c uitype --valueonly`
+    ngid=`ngls -g $ngname -c ngid --valueonly`
+    osname=`ngls -g $ngname -c os --valueonly`
+    apturl=`osls -o $osname -c repo --valueonly`
+    distro=`osls -o $osname -c distro --valueonly`
+    fsdir=/tmp/$ngid.$uitype
 
-if [ "x$1" = "x" -o "x$1" = "x-h" ]; then
-    echo "Usage: $0 ngname"
-    exit 1
-fi
+    srclist=$fsdir/etc/apt/sources.list
+
+    password=`gls -k password -c value --valueonly`
+
+    #remove old rootfs
+    rm -fr $fsdir
+    rm -fr /var/www/rootfs/$osname/${uitype}rootfs.tar.gz
+
+    mkdir -p $fsdir/var/lib/dpkg
+    mkdir -p $fsdir/etc
+    touch $fsdir/etc/fstab
+}
+
+function createbasefs()
+{
+    ipkgs="linux-image-generic openssh-server vim bash-completion tree subversion build-essential git-core nfs-common ctags cscope  libc6-dev"
+    rpkgs="thunderbird-gnome-support thunderbird libreoffice-avmedia-backend-gstreamer libreoffice-base-core libreoffice-calc libreoffice-common libreoffice-core libreoffice-draw libreoffice-gnome libreoffice-gtk libreoffice-impress libreoffice-math libreoffice-ogltrans libreoffice-pdfimport libreoffice-style-breeze libreoffice-style-elementary libreoffice-style-galaxy libreoffice-writer"
 
 
-ngname=$1
-ngls $ngname > /dev/null 2>&1
-if [ "x$?" != "x0" ]; then
-    exit 1
-fi
+    if [ "x$uitype" = "xgui" ]; then
+        ipkgs="$ipkgs ubuntu-desktop"
+    fi
 
-uitype=`ngls -g $ngname -c uitype --valueonly`
-if [ "x$uitype" = "x" ]; then
-    echo "Can not get uitype for $ngname"
-    exit 1
-fi
+    debootstrap --verbose --no-check-gpg `lsb_release -cs` $fsdir $apturl
 
-fsdir=/tmp/${uitype}rootfs
-srclist=$fsdir/etc/apt/sources.list
+    #use OS sources.list for chroot source list
+    #TODO: generate sources.list dynamically
+    cp /etc/apt/sources.list $srclist
 
-if [ "x$uitype" = "xgui" ]; then
-    ipkgs="$ipkgs ubuntu-desktop"
-fi
-
-distro=`ngls -g $ngname -c distro --valueonly`
-if [ "x$distro" = "x" ]; then
-    echo "Can not get distro for $ngname"
-    exit 1
-fi
-
-###########################
-#    Main starts here     # 
-###########################
-
-debootstrap --verbose --no-check-gpg `lsb_release -cs` $fsdir $apturl
-
-#prepare new source list file
-
-cp /etc/apt/sources.list $srclist
-
-#some runtime information
-mount -o bind /dev $fsdir/dev
-mount -o bind /sys $fsdir/sys
-mount -t proc proc $fsdir/proc
-
-#change root and do some thing
-
-# <------ command for chroot start
-
-cat <<_EOF > $fsdir/env.sh
+    #change root and do some thing
+    # <------ command for chroot start
+    cat <<_EOF > $fsdir/env.sh
 #!/bin/bash
 
 #change root password
@@ -103,50 +94,103 @@ LANG="en_US.UTF-8"
 LANGUAGE="en_US.UTF-8"
 __LAEOF
 
-#fix grub menu
-sed -i 's/GRUB_HIDDEN_TIMEOUT=0/#GRUB_HIDDEN_TIMEOUT=0/g' /etc/default/grub
+_EOF
+    # <------ command for chroot end
 
-#fix ssh root login
-sed -ie 's/PermitRoot.*/PermitRootLogin yes/g; s/StrictModes.*/StrictModes No/g' /etc/ssh/sshd_config
+    #mount memfs
+    mountmemfs
 
-#did not show all files for alias ll
-sed -i 's/alF/hlF/g' /root/.bashrc
+    # chroot execute the scripts generated above
+    chroot $fsdir /bin/bash -c "/bin/bash env.sh"
+}
 
+function mountmemfs()
+{
+    mkdir -p $fsdir/{proc,dev,sys}
+    mount --bind /proc $fsdir/proc 
+    mount --bind /dev $fsdir/dev 
+    mount --bind /sys $fsdir/sys
+}
+
+function umountmemfs()
+{
+    umount -f -l $fsdir/sys
+    umount -f -l $fsdir/dev
+    umount -f -l $fsdir/proc
+}
+
+function setuppkgs()
+{
+    #add customed vimrcs
+    cp -fr $LAROOT/etc/config/vim/{.vimrc,.vim}  $fsdir/root/
+
+    #fix .profile issue when gui login 
+    if [ "x$uitype" = "xgui" ]; then
+        sed -i 's/mesg/tty -s \&\& mesg n/g' $fsdir/root/.profile
+        echo "greeter-show-manual-login=true" >> $fsdir/usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf
+    fi
+
+    #fix grub menu
+    sed -i 's/GRUB_HIDDEN_TIMEOUT=0/#GRUB_HIDDEN_TIMEOUT=0/g' $fsdir/etc/default/grub
+
+    #fix ssh root login
+    sed -ie 's/PermitRoot.*/PermitRootLogin yes/g; s/StrictModes.*/StrictModes No/g' $fsdir/etc/ssh/sshd_config
+
+    #did not show all files for alias ll
+    sed -i 's/alF/hlF/g' $fsdir/root/.bashrc
+}
+
+function cleanfs()
+{
+    umountmemfs
+}
+
+#pack fs
+function packfs()
+{
+    echo "pack fs"
+    exlist=/tmp/exlist
+
+    cat << _EOF > $exlist
+    proc/*
+    dev/*
+    tmp/*
 _EOF
 
-# <------ command for chroot end
+    mkdir -p /var/www/rootfs/$osname
+    cd $fsdir
+    tar czf /var/www/rootfs/$osname/${uitype}rootfs.tar.gz . -X $exlist
+    cd -
+}
 
-chroot $fsdir /bin/bash -c "/bin/bash env.sh"
+###########################
+#####      Main      ######
+###########################
 
-sleep 3
-umount --force $fsdir{/dev,/sys,/proc}
+# global vars
+progname=$0
+ngname=$1
 
-sleep 3
-umount --force $fsdir{/dev,/sys,/proc}
+# global vars declaration
+osname=''
+distro=''
+repourl=''
+ngid=''
+uitype=''
+fsdir=''
+srclist='' 
+# init gvars
 
+prepare
 
-# make some config changes
-LAHOME=/opt/laworks
-#add customed vimrcs
-cp -fr $LAHOME/etc/config/vim/{.vimrc,.vim}  $fsdir/root/
+# create base fs
+createbasefs
 
-#fix .profile issue when gui login 
-if [ "x$uitype" = "xgui" ]; then
-    sed -i 's/mesg/tty -s \&\& mesg n/g' $fsdir/root/.profile
-    echo "greeter-show-manual-login=true" >> $fsdir/usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf
-fi
+# do some package setup
+setuppkgs
 
-#make rootfs
-exclude_list=/tmp/exclude_list
+# do some cleanup work
+cleanfs
 
-cat << _EOF > $exclude_list
-proc/*
-dev/*
-tmp/*
-_EOF
-
-ln -sf $LAHOME/rootfs /var/www/
-
-cd $fsdir
-tar -czf /var/www/rootfs/$distro/${uitype}rootfs.tar.gz . -X $exclude_list
-cd - > /dev/null 2>&1
+# pack the fs to proper place
+packfs

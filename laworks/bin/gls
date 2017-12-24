@@ -7,12 +7,12 @@ from utils import errout
 from app import LAApp
 from dbman  import ConnManager as DBConnManager
 
-class LAOSLsApp(LAApp):
+class LAGlobalLsApp(LAApp):
     def __init__(self):
         LAApp.__init__(self, debug=False)
         self.force_single_instance()
         self.cols = []
-        self.vcols = [ 'osname', 'distro', 'major', 'minor', 'ostype', 'repo' ]
+        self.vcols = [ 'key', 'value', 'extra' ]
     
     def parse_args(self):
 
@@ -21,8 +21,8 @@ class LAOSLsApp(LAApp):
 
         self.parser.add_option("-c", "--column", action="store", dest="colstr", 
                 help="column string, such like col1,col2", metavar="colname")
-        self.parser.add_option("-o", "--osname", action="store", dest="osname", 
-                help="os name", metavar="osname")
+        self.parser.add_option("-k", "--keyname", action="store", dest="keyname", 
+                help="key name", metavar="keyname")
         self.parser.add_option("--valueonly", action="store_true", dest="valueonly",
                 help="show values only")
 
@@ -37,45 +37,42 @@ class LAOSLsApp(LAApp):
 
         for col in cols:
             if col not in self.vcols:
-                errout("Specified column: %s is not a valid column for os" % (col))
+                errout("Specified column: %s is not a valid column for global" % (col))
                 sys.exit(1)
         
         self.cols = cols
 
         dbconn = DBConnManager.get_session()
-        alloses = dbconn.query(OS).all()
+        allglobals= dbconn.query(Global).all()
         
-        oses = alloses
-        if self.options.osname:
-            oses = [ os for os in alloses if os.osname == self.options.osname ]
-            if not oses:
-                errout("Can not find specified os")
+        gbls = allglobals
+        if self.options.keyname:
+            gbls = [ gbl for gbl in allglobals if gbl.key == self.options.keyname ]
+            if not gbls:
+                errout("Can not find specified global object")
                 sys.exit(1)
 
         kvmaps = {}
-        for os in oses:
+        for gbl in gbls :
             kvmap = {
-                "osname"  : os.osname,
-                "distro"  : os.distro,
-                "major"   : os.major,
-                "minor"   : os.minor,
-                "ostype"  : os.ostype,
-                "repo"    : os.repo
+                "key"  : gbl.key,
+                "value": gbl.value,
+                "extra": gbl.extra
                 }
-            kvmaps[os.osname] = kvmap
+            kvmaps[gbl.key] = kvmap
         
         cols = self.vcols
         if self.cols:
             cols = self.cols
         
-        for os in oses:
+        for gbl in gbls:
             for col in cols:
                 if self.options.valueonly:
-                    print kvmaps[os.osname][col]
+                    print kvmaps[gbl.key][col]
                 else:
-                    print "%-8s : %s" % (col, kvmaps[os.osname][col])
+                    print "%-8s : %s" % (col, kvmaps[gbl.key][col])
             if not self.options.valueonly: print 
 
 if __name__ == '__main__':
-    oslsapp = LAOSLsApp()
-    oslsapp.run()
+    glsapp = LAGlobalLsApp()
+    glsapp.run()
