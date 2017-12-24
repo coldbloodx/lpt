@@ -1,6 +1,6 @@
 mklabel msdos
-mkpart primary ext4 1G 20G
-mkpart primary linux-swap 20G 22G
-set 1 boot on
+mkpart primary linux-swap 1M 4G
+mkpart primary ext4 4G -1
+set 2 boot on
 quit
 

@@ -151,8 +151,8 @@ initfstab()
     cat << _EOF > $sysroot/etc/fstab
 #updated by LPT
 proc /proc proc nodev,noexec,nosuid 0 0
-/dev/sda1 / ext4   defaults 0 1
-/dev/sda2 none swap defaults 0 0 
+/dev/sda1 none swap defaults 0 0 
+/dev/sda2 / ext4   defaults 0 1
 _EOF
 }
 
@@ -543,8 +543,8 @@ FSTYPE='ext4'
 
 NFSDIR=''
 sysroot='/sysimage/'
-rootpart='/dev/sda1'
-swappart='/dev/sda2'
+rootpart='/dev/sda2'
+swappart='/dev/sda1'
 
 ################################
 ## Main routine starts here!!!##
