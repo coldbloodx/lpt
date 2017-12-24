@@ -65,13 +65,22 @@ buildenv()
     mkconfig -t httpd > /etc/apache2/sites-enabled/000-default.conf
     mkconfig -t dhcpd > /etc/dhcp/dhcpd.conf
     
-    provnic=`grep provnic $LAROOT/etc/install.conf |sed 's/^".*provnic.*"\(.*\)"/\1/'`
-    pubnic=`grep pub $LAROOT/etc/install.conf |sed 's/^".*pubnic.*"\(.*\)"/\1/'`
+    #provnic=`grep 'provnic.*".*"' $LAROOT/etc/install.conf |sed 's/^".*provnic.*"\(.*\)"/\1/'`
+    provnic=`grep 'provnic.*".*"' $LAROOT/etc/install.conf|sed 's/"provnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
+    #pubnic=`grep 'pubnic.*".*"'$LAROOT/etc/install.conf |sed 's/^".*pubnic.*"\(.*\)"/\1/'`
+    pubnic=`grep 'pubnic.*".*"' $LAROOT/etc/install.conf|sed 's/"pubnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
 
     echo "INTERFACES=\"$provnic\"" > /etc/default/isc-dhcp-server
 
     mkdir -p /var/www/others
     ln -sf $LAROOT/profiles/ /var/www/
+
+    #create part schema links
+
+    for ngid in `ngls --valueonly -c ngid`; do 
+        ln -sf /var/www/profiles/default /var/www/profiles/$ngid
+    done
+
     ln -sf /usr/lib/cgi-bin/ /var/www/
     ln -sf $LAROOT/libexec/nodeinfo.cgi.py $LAROOT/bin/niidump
     cp -f $LAROOT/libexec/nodeinfo.cgi.py  /usr/lib/cgi-bin/
