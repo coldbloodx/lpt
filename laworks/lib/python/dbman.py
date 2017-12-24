@@ -183,6 +183,7 @@ class TableManager:
 
         #2. os table
         myos = getmyos()
+        myos.repo = self.conf.get("aptrepo", None)
         osnames = [ myos.osname ]
         osdict = { myos.osname: myos }
 

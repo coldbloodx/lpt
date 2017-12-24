@@ -78,7 +78,7 @@ class LANodeInfoApp(LAApp):
         if not node:
             sys.exit(-1)
 
-        nodeinfo = gennodeinfo(node)
+        nodeinfo = gennodeinfo(dbconn, node)
 
         print nodeinfo
 

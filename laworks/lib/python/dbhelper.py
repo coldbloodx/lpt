@@ -48,7 +48,7 @@ def get_samba_dir(dbconn):
     return sambadir.value
 
 def get_dnsserver(dbconn):
-    dnsserver = dbconn.query(Global).filter_by(key="dnsserver").first();
+    dnsserver = dbconn.query(Global).filter_by(key="dns1").first();
     return dnsserver.value
 
 def get_master_ip(dbconn):
