@@ -209,10 +209,28 @@ DEVICE="$interface"
 IPADDR="$ip"
 NETMASK="$netmask"
 BROADCAST="$broadcast"
-GATEWAY="$gateway"
 _EOF
-        echo "nameserver $dns" >> $dnsconf
+        #there is defgateway and default gate is gateway
+        #create gateway line in nic conf
+        #else does not create gateway entry in nic conf
+        #if there is not defgateway, 
+        #create gateway entry in nic conf
+        if [ "x$defgateway" != "x" ]; then
+            if [ "x$defgateway" == "x$gateway" ]; then
+                echo "GATEWAY=$gateway" >> $networkconf
+            fi
+        else
+            echo "GATEWAY=$gateway" >> $networkconf
+        fi
     done
+        
+
+    if [ "x$dns1" != "x" ]; then
+        echo "nameserver $dns1" >> $dnsconf
+    fi
+    if [ "x$dns2" != "x" ]; then
+        echo "nameserver $dns2" >> $dnsconf
+    fi
 
     hnameconf="$sysroot/etc/sysconfig/network"
     rm -fr $hnameconf
