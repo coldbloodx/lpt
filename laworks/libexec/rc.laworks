@@ -11,8 +11,13 @@
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
-. /lib/init/vars.sh
-. /lib/lsb/init-functions
+if [ -f /lib/init/vars.sh ] ; then
+    . /lib/init/vars.sh
+fi
+
+if [ -f /lib/lsb/init-functions ]; then
+    . /lib/lsb/init-functions
+fi
 
 do_start() {
     logfile=/opt/laworks/log/rc.log 
@@ -26,8 +31,19 @@ do_start() {
 
     wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$master/others/rc.laworks.d/  -P /opt/laworks/rc.laworks.d > /tmp/wget.log
 
-    for script in `ls /opt/laworks/rc.laworks.d/*.sh /opt/laworks/rc.laworks.d/*.python 2>/dev/null |sort`;
-    do 
+    if [ "x$postscripts" == "x" ]; then
+        echo "no post script to be executed" >> $logfile
+        exit 0
+    fi
+    
+    for scriptname in $postscripts; do
+        script=/opt/laworks/rc.laworks.d/$scriptname
+
+        if [ ! -f $script ]; then
+            echo `date` "script: $scriptname does not exit: $script, skip to next" >> $logfile
+            continue
+        fi
+
         if [[ $script =~ .*\.sh$ ]]; then
             echo `date` "Executing '$script'..."
             /bin/bash $script >> $logfile 2>&1
@@ -40,6 +56,20 @@ do_start() {
             [[ $? == 0 ]] || echo "$script failed with return code: $?" >> $logfile
         fi
     done
+    #for script in `ls /opt/laworks/rc.laworks.d/*.sh /opt/laworks/rc.laworks.d/*.python 2>/dev/null |sort`;
+    #do 
+    #    if [[ $script =~ .*\.sh$ ]]; then
+    #        echo `date` "Executing '$script'..."
+    #        /bin/bash $script >> $logfile 2>&1
+    #        [[ $? == 0 ]] || echo "$script failed with return code: $?" >> $logfile
+    #    fi
+
+    #    if [[ $script =~ .*\.py$ ]]; then
+    #        echo `date` "Executing '$script'..."
+    #        python $script >> $logfile  2>&1
+    #        [[ $? == 0 ]] || echo "$script failed with return code: $?" >> $logfile
+    #    fi
+    #done
 
     return 0
 }
