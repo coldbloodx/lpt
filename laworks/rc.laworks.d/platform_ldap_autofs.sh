@@ -23,13 +23,13 @@ function setupldap()
 {
     ldapurl='ldap://xa1ldap2.eng.platformlab.ibm.com'
     basedn='dc=platformlab,dc=ibm,dc=com'
-    authconfig --enableldap --enableldapauth --ldapserver=$ldapurl --ldapbasedn=$basedn --disableldaptls --enablecache  --disablelocauthorize --update
+    authconfig --enableldap --enableldapauth --ldapserver=$ldapurl --ldapbasedn=$basedn --disableldaptls --disablecache  --disablelocauthorize --update
 
     #enable and restart nslcd
-    echo "restart nslcd ..."
-    systemctl enable nslcd
-    systemctl stop nslcd
-    systemctl start nslcd
+    #echo "restart nslcd ..."
+    #systemctl enable nslcd
+    #systemctl stop nslcd
+    #systemctl start nslcd
 }
 
 function setupautofs()
