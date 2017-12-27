@@ -8,6 +8,7 @@ from dbitem import *
 from dbhelper import *
 from constant import *
 from nodeoperation import *
+from utils import errexit
 from app import LAApp
 from dbman  import ConnManager as DBConnManager
 
@@ -15,15 +16,22 @@ class LANodeLsApp(LAApp):
     def __init__(self):
         LAApp.__init__(self, debug=False)
         self.force_single_instance()
+        self.cols = []
+        self.vcols = [ 'nid', 'nodename', 'ngname', 'provtype', 'status', 
+                'provnic', 'provip', 'pubnic', 'pubip', 'mac']
 
     def parseargs(self):
 
         self.parser.add_option("-v", "--version", action="callback",
                 callback=self.showversion, help="version")
-
-        if len(sys.argv[1:]) < 1:
-            self.parser.print_help()
-            sys.exit(0)
+        self.parser.add_option("-c", "--column", action="store", dest="colstr", 
+                help="column string, such like col1,col2", metavar="colname")
+        self.parser.add_option("-g", "--ngname", action="store", dest="ngname", 
+                help="nodegroup name", metavar="nodegroup")
+        self.parser.add_option("-n", "--nodename", action="store", dest="nodename", 
+                help="node name", metavar="nodename")
+        self.parser.add_option("--valueonly", action="store_true", dest="valueonly",
+                help="show values only")
 
         (self.options, self.args) = self.parser.parse_args(sys.argv[1:])
 
@@ -33,25 +41,79 @@ class LANodeLsApp(LAApp):
         nodes = dbconn.query(Node).all()
 
         for node in nodes:
-            nodemac = ''
-            for nic in node.nics:
-                if nic.nictype == NICTYPE_BOOT:
-                    nodemac = nic.mac
-
-            print "nid       : %s" % node.nid
-            print "name      : %s" % node.nodename
-            print "nodegroup : %s" % node.nodegroup.ngname
-            print "type      : %s" % node.nodegroup.provtype
-            print "status    : %s" % node.status
-            print "mac       : %s" % nodemac
-            print "nics      : %s" % ", ".join([ "%s: %s" % (nic.nicname, nic.ip) for nic in node.nics ])
-            print 
+            print node
 
         sys.exit(0)
 
     def run(self):
         self.parseargs()
 
+        dbconn = DBConnManager.get_session()
+
+        if self.options.ngname:
+            ng = get_ng_byname(dbconn, self.options.ngname)
+            if not ng:
+                errexit("Cannot find specified node group")
+
+        cols = []
+        if self.options.colstr:
+            cols = self.options.colstr.split(',')
+
+        for col in cols:
+            if col not in self.vcols:
+                errout("Specified column: %s is not a valid column for node" % (col))
+                sys.exit(1)
+
+        self.cols = cols
+        
+        allnodes = dbconn.query(Node).all()
+        nodes = allnodes
+        if self.options.nodename:
+            nodes = [ node for node in allnodes if node.nodename == self.options.nodename ]
+            
+        if self.options.ngname:
+            nodes = [ node for node in allnodes if node.nodegroup.ngname == self.options.ngname ]
+            if not nodes:
+                sys.exit(0)
+
+        kvmaps = {}
+        for node in nodes:
+            provnic = '' 
+            pubnicname = ''
+            pubnicip = ''
+            for nic in node.nics:
+                if nic.nictype == NICTYPE_PUBLIC:
+                    pubnicname = nic.nicname
+                    pubnicip   = nic.ip
+                if nic.nictype == NICTYPE_BOOT:
+                    provnic = nic
+
+            kvmap = {
+                    'nid'     : node.nid,
+                    'nodename': node.nodename,
+                    'ngname'  : node.nodegroup.ngname,
+                    'provtype': node.nodegroup.provtype,
+                    'status'  : node.status,
+                    'provnic' : provnic.nicname,
+                    'provip'  : provnic.ip,
+                    'pubnic'  : None or pubnicname,
+                    'pubip'   : None or pubnicip,
+                    'mac'     : provnic.mac
+                }
+            kvmaps[node.nodename] = kvmap
+        
+        cols = self.vcols
+        if self.cols:
+            cols = self.cols
+
+        for node in nodes:
+            for col in cols:
+                if self.options.valueonly:
+                    print kvmaps[node.nodename][col]
+                else:
+                    print "%-8s : %s" % (col, kvmaps[node.nodename][col])
+            if not self.options.valueonly: print 
+
 if __name__ == '__main__':
     nodelsapp = LANodeLsApp()
-    nodelsapp.lsnode()
+    nodelsapp.run()
