@@ -1,0 +1,26 @@
+#!/bin/bash
+
+. $LAROOT/libexec/laworks.common
+. $LAROOT/libexec/addons/vmware/laworks.vmware
+
+esxihost=$1
+keyfile="/etc/ssh/keys-root/authorized_keys"
+
+
+if [ "x$esxihost" == "x" ]; then
+    errexit "Usage: $0 <esxihost>"
+fi
+
+
+mykey=`cat /root/.ssh/id_rsa.pub`
+if [ "x$?" != "x0" ]; then
+    errexit "Cannot get public key of localhost"
+fi
+
+if [ "x$mykey" == "x" ]; then
+    errexit "Cannot get public key of localhost"
+fi
+
+ssh root@$esxihost "echo '$mykey' >> $keyfile"
+
+exit $?

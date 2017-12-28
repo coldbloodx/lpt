@@ -1,0 +1,12 @@
+#!/bin/bash
+
+. $LAROOT/libexec/laworks.common
+. $LAROOT/libexec/addons/vmware/laworks.vmware
+
+esxihost=$1
+
+if [ "x$esxihost" == "x" ]; then
+    errexit "Usage: $0 <esxihost>"
+fi
+
+getallvms $esxihost

@@ -1,0 +1,44 @@
+#!/bin/bash
+
+echo unit test for vmware addons
+
+. $LAROOT/bin/laworks.profile
+
+. $LAROOT/libexec/addons/vmware/laworks.vmware
+
+PATH=$LAROOT/libexec/addons/vmware:$PATH
+export PATH
+
+echo case 01: get all vms
+lsvms hv33
+echo 
+
+echo case 02: get specified vm
+getvm hv33 un01
+echo 
+
+echo case 03: get vm power state
+getvmpower hv33 un01
+echo 
+
+echo case 04: poweroff
+poweroff hv33 un01
+sleep 5
+echo 
+
+echo case 03: get vm power state
+getvmpower hv33 un01
+echo 
+
+echo case 05: poweron
+poweron hv33 un01
+sleep 5
+echo 
+
+echo case 03: get vm power state
+getvmpower hv33 un01
+echo 
+
+echo case 03: get non-exist vm
+getvm hv33 non_exist
+echo 

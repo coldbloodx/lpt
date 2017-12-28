@@ -1,0 +1,71 @@
+#!/bin/bash
+
+. $LAROOT/libexec/laworks.common
+
+function getallvms()
+{
+    esxihost=$1
+    cmd='vim-cmd vmsvc/getallvms'
+    ssh $esxihost $cmd
+    #the return value should like below:
+    #[root@localhost:/etc/ssh/keys-root] vim-cmd  vmsvc/getallvms --help
+    #Vmid   Name                File                 Guest OS      Version   Annotation
+    #2      gseed   [datastore1] gseed/gseed.vmx   ubuntu64Guest   vmx-11
+    #3      un01    [datastore1] un01/un01.vmx     ubuntu64Guest   vmx-11
+    #4      un02    [datastore1] un02/un02.vmx     ubuntu64Guest   vmx-11
+    #5      cn01    [datastore1] cn01/cn01.vmx     rhel7_64Guest   vmx-11
+    #...
+}
+
+function getvm()
+{
+    esxihost=$1 
+    vmname=$2
+
+    vmid=`getallvms $1 |tail -n +2 |awk '{if($2 == "'$vmname'") print $1}'`
+
+    if [ "x$vmid" == "x" ]; then
+        errexit "Cannot getvm: $vmname"
+    fi
+    echo $vmid
+}
+
+function getvmpower()
+{
+    esxihost=$1
+    vmname=$2
+    vmid=`getvm $esxihost $vmname`
+
+    cmd="ssh $esxihost vim-cmd vmsvc/power.getstate $vmid"
+    $cmd |grep Powered |cut -d " " -f 2
+}
+
+function poweron()
+{
+    esxihost=$1
+    vmname=$2
+    vmid=`getvm $esxihost $vmname`
+
+    cmd="ssh $esxihost vim-cmd vmsvc/power.on $vmid"
+    $cmd
+}
+
+function poweroff()
+{
+    esxihost=$1
+    vmname=$2
+    vmid=`getvm $esxihost $vmname`
+
+    cmd="ssh $esxihost vim-cmd vmsvc/power.off $vmid"
+    $cmd
+}
+
+function powerreset()
+{
+    esxihost=$1
+    vmname=$2
+    vmid=`getvm $esxihost $vmname`
+
+    cmd="ssh $esxihost vim-cmd vmsvc/power.reset $vmid"
+    $cmd
+}
