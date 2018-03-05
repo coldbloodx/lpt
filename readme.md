@@ -1,3 +1,4 @@
 leo-power-toy
 =============
-Leo's Power Toy, A funny toy
+Leo's Power Toy, A funny toy.
+
