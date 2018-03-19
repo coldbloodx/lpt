@@ -69,6 +69,9 @@ def makehosts(dbconn):
                 ipnamemap[nic.ip] = "%s %s %s-%s" % (nic.ip, node.nodename, node.nodename, nic.nicname)
             else:
                 ipnamemap[nic.ip] = "%s %s-%s" %(nic.ip, node.nodename, nic.nicname)
+    
+    #add a new line for the LPT entries
+    newhosts.extend(["\n#add by LPT"])
 
     for ip in ips:
         newhosts.append(ipnamemap[ip])
