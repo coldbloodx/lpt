@@ -34,14 +34,6 @@ def makehttpd(dbconn):
 def makenfs(dbconn):
     return "nfs"
 
-
-def ipexists(ip, hostlist):
-    for hostline in hostlist:
-        if hostline.startswith(ip):
-            return True
-
-    return False;
-
 def makehosts(dbconn):
     nodes = dbconn.query(Node).all()
 
@@ -54,25 +46,37 @@ def makehosts(dbconn):
     hosts = fp.readlines()
     hosts = [ line.strip() for line in hosts ]
 
-    content = []
+    newhosts = []
+    
+    nics = dbconn.query(Nic).all()
+    ips = [ nic.ip for nic in nics ]
+    ips.sort()
+
+    for hostline in hosts:
+        hostline = hostline.strip()
+
+        if not hostline: continue
+
+        hostip = hostline.split()[0]
+        if hostip not in ips:
+            newhosts.append(hostline)
+        
+    ipnamemap = {} 
 
     for node in nodes:
         for nic in node.nics:
-
-            if ipexists(nic.ip, hosts):
-                continue
-
             if nic.network.nwtype == "provision":
-                content.append("%s %s %s-%s" % (nic.ip, node.nodename, node.nodename, nic.nicname))
+                ipnamemap[nic.ip] = "%s %s %s-%s" % (nic.ip, node.nodename, node.nodename, nic.nicname)
             else:
-                content.append("%s %s-%s" %(nic.ip, node.nodename, nic.nicname))
-    
-    hosts.extend(content)
+                ipnamemap[nic.ip] = "%s %s-%s" %(nic.ip, node.nodename, nic.nicname)
 
-    if not hosts:
+    for ip in ips:
+        newhosts.append(ipnamemap[ip])
+
+    if not newhosts:
         return ""
 
-    return "\n".join(hosts)
+    return "\n".join(newhosts)
     
 def makenamed(dbconn):
     domain = get_domain_name(dbconn)
