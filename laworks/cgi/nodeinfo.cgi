@@ -16,9 +16,6 @@ from nodeoperation import *
 from app import LAApp
 from dbman  import ConnManager as DBConnManager
 
-
-
-
 class LANodeInfoApp(LAApp):
     def __init__(self):
         LAApp.__init__(self, debug=False, root=False, haslog=False)

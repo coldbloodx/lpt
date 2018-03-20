@@ -87,7 +87,7 @@ updatestate()
 
     nodeinfo="/tmp/nodeinfo"
 
-    url="http://$masterip/cgi-bin/nodeinfo.cgi.py?mac=$mac&status=$state"
+    url="http://$masterip:$cgiport/nodeinfo.cgi?mac=$mac&status=$state"
     echo "node info url: $url"
 
     wget $url -O $nodeinfo
@@ -128,7 +128,7 @@ initdisk()
     # wipe off all partitions
     dd if=/dev/zero of=$boothd count=1 bs=512
     schema=/tmp/schema
-    wget http://$masterip/profiles/$ngid/schema -O $schema
+    wget http://$masterip:$miscport/profiles/$ngid/schema -O $schema
     
     if [ "x$provtype" == "xdisked" ]; then
         parted $boothd < $schema
@@ -406,29 +406,17 @@ _EOF
 
 add_laworks_service()
 {
+    wget http://$masterip:$miscport/others/rc.laworks -O $sysroot/etc/init.d/rc.laworks
+    chmod 755 $sysroot/etc/init.d/rc.laworks
     case $distro in
         ubuntu*)
-            add_debian_service
+            chroot $sysroot /bin/bash -c "update-rc.d rc.laworks defaults"
             ;;
         rhel*|centos*)
+            chroot $sysroot /bin/bash -c "chkconfig rc.laworks on"
             add_rhel_service
             ;;
     esac
-}
-
-add_debian_service()
-{
-    wget http://$masterip/others/rc.laworks -O $sysroot/etc/init.d/rc.laworks
-    chmod 755 $sysroot/etc/init.d/rc.laworks
-    #chroot $sysroot /bin/bash -c "echo 'dash dash/sh boolean false' | debconf-set-selections; DEBIAN_FRONTEND=noninteractive dpkg-reconfigure dash; update-rc.d rc.laworks defaults"
-    chroot $sysroot /bin/bash -c "update-rc.d rc.laworks defaults"
-}
-
-add_rhel_service()
-{
-    wget http://$masterip/others/rc.laworks -O $sysroot/etc/init.d/rc.laworks
-    chmod 755 $sysroot/etc/init.d/rc.laworks
-    chroot $sysroot /bin/bash -c "chkconfig rc.laworks on"
 }
 
 first_boot()
@@ -449,11 +437,11 @@ mkmemrfs()
     updatestate $status_creatingfs
     echo "create rootfs for $provtype $uitype node"
     rootfs="/tmp/${uitype}rootfs.tar.gz"
-    url="http://$masterip/rootfs/$distro/${uitype}rootfs.tar.gz"
+    url="http://$masterip:$miscport/rootfs/$distro/${uitype}rootfs.tar.gz"
     wget $url -O $rootfs
 
     if [ "$?" != "0" ]; then 
-        "mount nfs from installer failed"
+        "get rootfs from installer failed"
         debug
     fi
 
@@ -461,8 +449,6 @@ mkmemrfs()
     mount tmpfs -t tmpfs $sysroot
 
     tar xzf $rootfs -C $sysroot
-    #TODO
-    #can not boot into X when use desktop image need investigate again!!!!
 }
 
 mkwinrootfs()
@@ -502,7 +488,7 @@ mkdiskedrfs()
 
     echo "creating linux rootfs for $provtype $uitype node"
     rootfs="/tmp/${uitype}rootfs.tar.gz"
-    url="http://$masterip/rootfs/$distro/${uitype}rootfs.tar.gz"
+    url="http://$masterip:$miscport/rootfs/$distro/${uitype}rootfs.tar.gz"
     wget $url -O $rootfs
 
     echo "making rootfs"
@@ -518,7 +504,7 @@ mkdiskedrfs()
     
     #make password less access the compute node
     echo "get pub keys"
-    wget "http://$masterip/others/.id_rsa.pub" -O /tmp/.id_rsa.pub
+    wget "http://$masterip:$miscport/others/.id_rsa.pub" -O /tmp/.id_rsa.pub
     mkdir -p $sysroot/root/.ssh/
     cat /tmp/.id_rsa.pub > $sysroot/root/.ssh/authorized_keys
     chmod 0600 $sysroot/root/.ssh/authorized_keys
@@ -563,6 +549,9 @@ NFSDIR=''
 sysroot='/sysimage/'
 rootpart='/dev/sda2'
 swappart='/dev/sda1'
+
+cgiport=9124
+miscport=9123
 
 ################################
 ## Main routine starts here!!!##
