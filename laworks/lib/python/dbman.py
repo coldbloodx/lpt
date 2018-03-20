@@ -171,6 +171,7 @@ class TableManager:
         session.add_all([
             Global("master", provip), 
             Global("provnic", self.conf['provnic']),
+            Global("pubnic", self.conf['pubnic']),
             Global("dns1", self.conf['dns1']), 
             Global("dns2", self.conf['dns2']), 
             Global("password", self.conf['password']),

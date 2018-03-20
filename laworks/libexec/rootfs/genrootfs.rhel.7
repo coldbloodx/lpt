@@ -27,24 +27,26 @@ function prepare()
     osname=`ngls -g $ngname -c os --valueonly`
     repourl=`osls -o $osname -c repo --valueonly`
     distro=`osls -o $osname -c distro --valueonly`
-    fsdir=/tmp/$ngid.$uitype
-    yumconf=$fsdir/etc/yum.repos.d/cd.repo
+    tmpdir=/tmp/$ngid.$uitype
+    fsdir=$LAROOT/misc/rootfs/
+    yumconf=$tmpdir/etc/yum.repos.d/cd.repo
+
 
     password=`gls -k password -c value --valueonly`
 
     #remove old rootfs
-    rm -fr $fsdir
-    rm -fr /var/www/rootfs/$osname/${uitype}rootfs.tar.gz
+    rm -fr $tmpdir
+    rm -fr $fsdir/$osname/${uitype}rootfs.tar.gz
 
-    mkdir -p $fsdir/var/lib/{yum,rpm}
-    mkdir -p $fsdir/etc
-    touch $fsdir/etc/fstab
+    mkdir -p $tmpdir/var/lib/{yum,rpm}
+    mkdir -p $tmpdir/etc
+    touch $tmpdir/etc/fstab
 }
 
 function createyumrepo()
 {
     #create yum repo based on iso repo
-    mkdir -p $fsdir/etc/yum.repos.d/
+    mkdir -p $tmpdir/etc/yum.repos.d/
     cat > $yumconf << _EOF
 [$distro]
 name=$distro
@@ -58,17 +60,17 @@ _EOF
 function mountmemfs()
 {
     #bind mem sys to rootfs dir, like proc, dev, sys
-    mkdir -p $fsdir/{proc,dev,sys}
-    mount --bind /proc $fsdir/proc 
-    mount --bind /dev $fsdir/dev 
-    mount --bind /sys $fsdir/sys
+    mkdir -p $tmpdir/{proc,dev,sys}
+    mount --bind /proc $tmpdir/proc 
+    mount --bind /dev $tmpdir/dev 
+    mount --bind /sys $tmpdir/sys
 }
 
 function umountmemfs()
 {
-    umount -f -l $fsdir/sys
-    umount -f -l $fsdir/dev
-    umount -f -l $fsdir/proc
+    umount -f -l $tmpdir/sys
+    umount -f -l $tmpdir/dev
+    umount -f -l $tmpdir/proc
 }
 
 #install base system
@@ -78,7 +80,7 @@ function createbasefs()
     mountmemfs
 
     pkgs="${distro}-release yum kernel man wget passwd vim openssh-server openssh-clients grub2-pc.x86_64 grub2-tools.x86_64 initscripts net-tools parted redhat-lsb-core"
-    yum -y -c $yumconf  --installroot=$fsdir install $pkgs
+    yum -y -c $yumconf  --installroot=$tmpdir install $pkgs
 
     #ubuntu and redhat/centos use a different rpmdb macro here:
     #redhat/centos: rpm --eval %_dbpath --> /var/lib/rpm
@@ -86,44 +88,45 @@ function createbasefs()
     #so after yum chroot install the rpmdb are placed in different location
     #because LPT only supports MN on ubuntu, mv the rpmdb to correct location
 
-    cp -fr $fsdir/root/.rpmdb/* $fsdir/var/lib/rpm
+    cp -fr $tmpdir/root/.rpmdb/* $tmpdir/var/lib/rpm
 
-    ls -alh $fsdir/var/lib/rpm/*
+    ls -alh $tmpdir/var/lib/rpm/*
 
-    #rm -fr $fsdir/var/lib/rpm/__db.*
-    filelist=`file $fsdir/var/lib/rpm/* | grep 'Berkeley DB' | awk -F : '{print \$1}'`
+    #rm -fr $tmpdir/var/lib/rpm/__db.*
+    filelist=`file $tmpdir/var/lib/rpm/* | grep 'Berkeley DB' | awk -F : '{print \$1}'`
 
     for file in $filelist; do
         filename=`basename $file`
-        db_dump $file > $fsdir/tmp/$filename.dbtmp9
+        db_dump $file > $tmpdir/tmp/$filename.dbtmp9
         rm -fr $file
-        chroot $fsdir db_load -f /tmp/$filename.dbtmp9 /var/lib/rpm/$filename
+        chroot $tmpdir db_load -f /tmp/$filename.dbtmp9 /var/lib/rpm/$filename
     done
     
-    chroot $fsdir rpm --rebuilddb
+    chroot $tmpdir rpm --rebuilddb
 
-    rm -fr $fsdir/etc/yum.repos.d/{CentOS*,redhat*}
+    rm -fr $tmpdir/etc/yum.repos.d/{CentOS*,redhat*}
 }
 
 #setup pkgs
 function setuppkgs()
 {
     #set root passwd
-    chroot $fsdir /bin/bash -c "echo $password |passwd root --stdin"
+    chroot $tmpdir /bin/bash -c "echo $password |passwd root --stdin"
 
     #set up vim 
-    cp -fr $LAROOT/etc/config/vim/{.vimrc,.vim}  $fsdir/root/
+    cp -fr $LAROOT/etc/config/vim/{.vimrc,.vim}  $tmpdir/root/
     
     #set up bashrc
-    cp -fr $LAROOT/etc/config/bash/.bashrc.rhel $fsdir/root/.bashrc
-    cp -fr $LAROOT/etc/config/bash/.bash_profile.rhel $fsdir/root/.bash_profile
+    cp -fr $LAROOT/etc/config/bash/.bashrc.rhel $tmpdir/root/.bashrc
+    cp -fr $LAROOT/etc/config/bash/.bash_profile.rhel $tmpdir/root/.bash_profile
 }
 
 #clean fs
 function cleanfs()
 {
-    #remove auto generated repos
-    rm -fr $fsdir/etc/yum.repos.d/{CentOS*,redhat*}
+    #backup auto generated repos
+    mkdir -p $tmpdir/etc/yum.repos.d/bak
+    mv $tmpdir/etc/yum.repos.d/{CentOS*,redhat*} $tmpdir/etc/yum.repos.d/bak
     umountmemfs
 }
 
@@ -139,9 +142,9 @@ function packfs()
     tmp/*
 _EOF
 
-    mkdir -p /var/www/rootfs/$osname
-    cd $fsdir
-    tar czf /var/www/rootfs/$osname/${uitype}rootfs.tar.gz . -X $exlist
+    mkdir -p $fsdir/$osname
+    cd $tmpdir
+    tar czf $fsdir/$osname/${uitype}rootfs.tar.gz . -X $exlist
     cd -
 }
 
@@ -159,8 +162,11 @@ distro=''
 repourl=''
 ngid=''
 uitype=''
-fsdir=''
+tmpdir=''
 yumconf='' 
+fsdir=''
+
+
 # init gvars
 
 prepare

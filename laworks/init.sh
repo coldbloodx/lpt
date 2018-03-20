@@ -74,8 +74,8 @@ buildenv()
    
     #dhcpd
     mkconfig -t dhcpd > /etc/dhcp/dhcpd.conf
-    provnic=`grep 'provnic.*".*"' $INSTCONF|sed 's/"provnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
-    pubnic=`grep 'pubnic.*".*"' $INSTCONF|sed 's/"pubnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
+    provnic=`gls -k provnic -c value --valueonly`
+    pubnic=`gls -k pubnic -c value --valueonly`
 
     cat > /etc/default/isc-dhcp-server <<_EOF  
 INTERFACES="$provnic"
@@ -103,6 +103,18 @@ _EOF
 
     #give the permission to apache
     chown $HTTPUSER:$HTTPGRP $LAMISC $LACGI $LAWEB -R
+
+    #add http listen port
+    miscport=`gls -k miscport -c value --valueonly`
+    cgiport=`gls -k cgiport -c value --valueonly`
+    webport=`gls -k webport -c value --valueonly`
+
+    portconf=/etc/apache2/ports.conf
+    for port in $miscport $cgiport $webport; do 
+        if ! grep "Listen $port" $portconf > /dev/null 2>&1; then
+            echo "Listen $port" >> $portconf
+        fi
+    done
 
     systemctl enable apache2.service tftpd-hpa.service isc-dhcp-server
     systemctl stop apache2.service tftpd-hpa.service isc-dhcp-server
