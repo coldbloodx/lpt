@@ -14,6 +14,8 @@ initenv()
     LACGI=$LAROOT/cgi
     LAWEB=$LAROOT/web
     INSTCONF=$LAROOT/etc/install.conf
+    HTTPUSER='www-data'
+    HTTPGRP='www-data'
 
     if [ ! -f "$LAPWD/init.sh" ]; then 
         errexit "Cannot init environment in other directory, enter code root directory first" 
@@ -98,6 +100,9 @@ _EOF
         ssh-keygen -t rsa -b 1024 -f /root/.ssh/id_rsa -N ""
     fi
     cp /root/.ssh/id_rsa.pub $LAMISC/others/.id_rsa.pub
+
+    #give the permission to apache
+    chown $HTTPUSER:$HTTPGRP $LAMISC $LACGI $LAWEB -R
 
     systemctl enable apache2.service tftpd-hpa.service isc-dhcp-server
     systemctl stop apache2.service tftpd-hpa.service isc-dhcp-server
