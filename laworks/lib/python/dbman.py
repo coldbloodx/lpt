@@ -178,6 +178,9 @@ class TableManager:
             Global("gateway", defgateway), 
             Global("ntpserver", provip),
             Global("sambashare", "/share"),
+            Global("miscport", self.conf.get('miscport', '9123')),
+            Global("cgiport", self.conf.get('cgiport', '9124')),
+            Global("webport", self.conf.get('webport', '8080')),
             Global("domain", domain)])
         session.commit();
 

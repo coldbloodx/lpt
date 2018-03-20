@@ -1,6 +1,0 @@
-mklabel msdos
-mkpart primary linux-swap 1M 4G
-mkpart primary ext4 4G -1
-set 2 boot on
-quit
-

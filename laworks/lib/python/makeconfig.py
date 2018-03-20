@@ -9,6 +9,8 @@ from constant import *
 from utils import errout
 from dbman import ConnManager as DBConnManager
 
+import os
+
 def makedhcpd(dbconn):
     provip = get_master_ip(dbconn)
     domain = get_domain_name(dbconn)
@@ -28,7 +30,36 @@ def maketftp(dbconn):
     return str(tftptmpl)
 
 def makehttpd(dbconn):
-    httptmpl = Template(file=CONF_TMPL_HTTPD)
+
+    rootdir = os.environ['LAROOT'] or '/opt/laworks/'
+    miscdir = '%s/misc' % rootdir
+    cgidir = '%s/cgi' % rootdir
+    webdir = '%s/web' % rootdir
+
+    libdir = '%s/lib/python' % rootdir
+    
+    vdict = {}
+    vdict = get_global_records(dbconn, [ 'miscport', 'cgiport', 'webport' ])['found']
+
+    miscport = vdict.get('miscport', '9123')
+    cgiport = vdict.get('cgiport', '9124')
+    webport = vdict.get('webport', '8080')
+
+    wwwuser = vdict.get('wwwuser', 'www-data')
+    wwwgrp = vdict.get('wwwgrp', 'wwww-data')
+
+    httptmpl = Template(file=CONF_TMPL_HTTPD, 
+            searchList = {
+                'miscport' : miscport,
+                'cgiport'  : cgiport,
+                'webport'  : webport,
+                'miscdir'  : miscdir,
+                'cgidir'   : cgidir,
+                'webdir'   : webdir,
+                'libdir'   : libdir,
+                'wwwuser'  : wwwuser,
+                'wwwgrp'   : wwwgrp})
+
     return str(httptmpl)
 
 def makenfs(dbconn):

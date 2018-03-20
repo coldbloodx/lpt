@@ -1,4 +1,4 @@
-#!/bin/bash
+
 
 errexit()
 {
@@ -10,6 +10,10 @@ initenv()
 {
     LAPWD=`pwd`
     LAROOT=/opt/laworks
+    LAMISC=$LAROOT/misc
+    LACGI=$LAROOT/cgi
+    LAWEB=$LAROOT/web
+    INSTCONF=$LAROOT/etc/install.conf
 
     if [ ! -f "$LAPWD/init.sh" ]; then 
         errexit "Cannot init environment in other directory, enter code root directory first" 
@@ -56,41 +60,35 @@ buildenv()
     
     if [ ! -f $LAROOT/bak ]; then
         mkdir -p $LAROOT/etc/bak
-        cp /etc/default/tftpd-hpa $LAROOT/etc/bak
-        cp /etc/dhcp/dhcpd.conf $LAROOT/etc/bak
-        cp /etc/apache2/sites-enabled/000-default.conf $LAROOT/etc/bak
     fi
+
+    cp /etc/default/tftpd-hpa $LAROOT/etc/bak
+    cp /etc/dhcp/dhcpd.conf $LAROOT/etc/bak
     
+    #tftpd
     mkconfig -t tftp > /etc/default/tftpd-hpa
-    mkconfig -t httpd > /etc/apache2/sites-enabled/000-default.conf
+
+    mkconfig -t httpd > /etc/apache2/sites-enabled/001-lpt.conf
+   
+    #dhcpd
     mkconfig -t dhcpd > /etc/dhcp/dhcpd.conf
-    
-    #provnic=`grep 'provnic.*".*"' $LAROOT/etc/install.conf |sed 's/^".*provnic.*"\(.*\)"/\1/'`
-    provnic=`grep 'provnic.*".*"' $LAROOT/etc/install.conf|sed 's/"provnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
-    #pubnic=`grep 'pubnic.*".*"'$LAROOT/etc/install.conf |sed 's/^".*pubnic.*"\(.*\)"/\1/'`
-    pubnic=`grep 'pubnic.*".*"' $LAROOT/etc/install.conf|sed 's/"pubnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
+    provnic=`grep 'provnic.*".*"' $INSTCONF|sed 's/"provnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
+    pubnic=`grep 'pubnic.*".*"' $INSTCONF|sed 's/"pubnic".*:.*"\(.*\)".*,/\1/' |tr -d " "`
 
-    echo "INTERFACES=\"$provnic\"" > /etc/default/isc-dhcp-server
+    cat > /etc/default/isc-dhcp-server <<_EOF  
+INTERFACES="$provnic"
+_EOF
 
-    mkdir -p /var/www/others
-    ln -sf $LAROOT/profiles/ /var/www/
+    #httpd related staff
 
-    #create part schema links
-
-    for ngid in `ngls --valueonly -c ngid`; do 
-        ln -sf /var/www/profiles/default /var/www/profiles/$ngid
-    done
-
-    ln -sf /usr/lib/cgi-bin/ /var/www/
-    ln -sf $LAROOT/libexec/nodeinfo.cgi.py $LAROOT/bin/niidump
-    cp -f $LAROOT/libexec/nodeinfo.cgi.py  /usr/lib/cgi-bin/
-    
-    ln -sf $LAROOT/libexec/rc.laworks /var/www/others/
-    ln -sf $LAROOT/rc.laworks.d   /var/www/others
-    
     #enable cgi
     ln -sf /etc/apache2/mods-available/cgi.load /etc/apache2/mods-enabled/
 
+    #create part schema links
+    for ngid in `ngls --valueonly -c ngid`; do 
+        ln -sf $LAMISC/profiles/default $LAMISC/profiles/$ngid
+    done
+    
     #add kernel
     cp -f /vmlinuz /tftpboot/linux
     chmod 644 /tftpboot/linux
@@ -99,7 +97,7 @@ buildenv()
     if [ ! -f /root/.ssh/id_rsa.pub ]; then
         ssh-keygen -t rsa -b 1024 -f /root/.ssh/id_rsa -N ""
     fi
-    cp /root/.ssh/id_rsa.pub /var/www/others/.id_rsa.pub
+    cp /root/.ssh/id_rsa.pub $LAMISC/others/.id_rsa.pub
 
     systemctl enable apache2.service tftpd-hpa.service isc-dhcp-server
     systemctl stop apache2.service tftpd-hpa.service isc-dhcp-server
