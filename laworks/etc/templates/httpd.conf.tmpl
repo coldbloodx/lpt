@@ -29,7 +29,7 @@
 </VirtualHost>
 
 <VirtualHost *:$webport>
-    WSGIDaemonProcess lptweb user=$wwwuser group=$wwwgrp threads=5 python-path=$webdir
+    WSGIDaemonProcess lptweb user=$wwwuser group=$wwwgrp threads=5 python-path=$webdir:$libdir
     WSGIScriptAlias / $webdir/setup.wsgi
     DocumentRoot $webdir
     <Directory "/">

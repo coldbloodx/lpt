@@ -11,6 +11,14 @@ try:
 except:
     from popen5 import subprocess
 
+def obj2dict(obj):
+    retdict = {} 
+    retdict.update(obj.__dict__)
+    for key in retdict.keys():
+        if key.startswith('_') or key.startswith('__'):
+            retdict.pop(key)
+
+    return retdict
 
 def objs2dict(objs, key):
     retdict = {} 

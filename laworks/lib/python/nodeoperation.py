@@ -11,6 +11,20 @@ from dbitem import *
 from makeconfig import makehosts
 from dbman import ConnManager as DBConnManager
 
+def updatenode(dbconn, dictnode):
+
+    if (not dictnode) or (not dictnode.has_key('nid')) and (not dictnode.has_key('nodename')):
+        return 1, "invalid input node info"
+
+    node = get_node_byid(dbconn, dictnode['nid'])
+
+    if not node:
+        return 1, "cannot find specified node"
+
+        
+
+    return 0, ""
+
 def get_available_num(numbers, maxnum):
     counter = 0
     for i in numbers:

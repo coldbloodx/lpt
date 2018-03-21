@@ -1,8 +1,10 @@
-from flask import Flask,request
+from flask import Flask,request,jsonify
 from flask.ext.restful import Api, Resource
 
-import sys
-sys.path.insert(0, '/opt/laworks/lib/python/')
+
+#for lpt related python libs
+#import sys
+#sys.path.insert(0, '/opt/laworks/lib/python/')
 
 from dbman import ConnManager as DBConnManager
 from dbitem import *
@@ -10,7 +12,6 @@ from dbhelper import *
 from constant import *
 from nodeoperation import *
 from utils import *
-
 
 app = Flask(__name__)
 api = Api(app)
@@ -21,12 +22,19 @@ class Nodes(Resource):
         nodes = dbconn.query(Node).all()
         nodemap = objs2dict(nodes, 'nid')
 
-        return nodemap
+        return jsonify(nodemap)
+
+class RNode(Resource):
+    def get(self, nid):
+        dbconn = DBConnManager.get_session()
+        node = get_node_byid(dbconn, nid)
+        nodedict = obj2dict(node)
+        return jsonify(nodedict)
 
     def post(self):
-        node_id = len(nodemap)
-        return nodemap['ccn001']
+        data= {'code' : 200 }
 
+        return jsonify(data)
 
 class NodeGroups(Resource):
     def get(self):
@@ -35,6 +43,10 @@ class NodeGroups(Resource):
         ngmap = objs2dict(ngs, 'ngid')
 
         return ngmap
+
+class RNodeGroup(Resource):
+    def get(self, ngid):
+        return jsonify({ngid, ngid})
 
 class OSes(Resource):
     def get(self):
@@ -92,14 +104,26 @@ class Scripts(Resource):
 
         return smap
 
-api.add_resource(Nodes, '/nodes')
-api.add_resource(NodeGroups, '/ngs')
-api.add_resource(OSes, '/oses')
-api.add_resource(Nets, '/nets')
-api.add_resource(Nics, '/nics')
-api.add_resource(Globals, '/globals')
-api.add_resource(PartSchemas, '/partschemas')
-api.add_resource(Scripts, '/scripts')
+#R<classname> refers to wRapper<classname>
+api.add_resource(OSes, '/oses/')
+#api.add_resource(ROS, '/oses/<osid>')
+api.add_resource(Nets, '/nets/')
+#api.add_resource(RNet, '/nets/<netid>')
+api.add_resource(Nics, '/nics/')
+#api.add_resource(RNic, '/nics/<nicid>')
+
+api.add_resource(Nodes, '/nodes/')
+api.add_resource(RNode, '/nodes/<nid>')
+
+api.add_resource(NodeGroups, '/ngs/')
+#api.add_resource(RNodeGroup, '/ngs/<ngid>')
+api.add_resource(Globals, '/globals/')
+#api.add_resource(RGlobal, '/globals/<gkey>')
+api.add_resource(Scripts, '/scripts/')
+#api.add_resource(RScript, '/scripts/<scriptid>')
+api.add_resource(PartSchemas, '/partschemas/')
+#api.add_resource(RPartSchema, '/partschemas/<schemaid>')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.debug = True
+    app.run()
