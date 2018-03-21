@@ -7,6 +7,7 @@ from unipath.path import Path as path
 from dbitem import *
 from dbhelper import *
 from constant import *
+from utils import runcmd
 from nodeoperation import *
 from app import LAApp
 from dbman  import ConnManager as DBConnManager
@@ -53,6 +54,8 @@ class LANodeResetApp(LAApp):
             if self.options.pxeboot:
                 node.status = STATUS_IMPORTED
                 if node.nodegroup.os.ostype == 'linux':
+                    runcmd('ssh-keygen -R %s' % nodename)
+                    runcmd('ssh-keygen -R %s' % nic.ip)
                     genlnxnbpxe(nic)
                 elif node.nodegroup.os.ostype == 'windows':
                     genwinnbpxe(nic)
