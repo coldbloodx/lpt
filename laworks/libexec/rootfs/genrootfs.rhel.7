@@ -126,7 +126,7 @@ function cleanfs()
 {
     #backup auto generated repos
     mkdir -p $tmpdir/etc/yum.repos.d/bak
-    mv $tmpdir/etc/yum.repos.d/{CentOS*,redhat*} $tmpdir/etc/yum.repos.d/bak
+    mv $tmpdir/etc/yum.repos.d/{CentOS*,redhat*} $tmpdir/etc/yum.repos.d/bak 2>/dev/null
     umountmemfs
 }
 

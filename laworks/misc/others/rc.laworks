@@ -25,11 +25,13 @@ do_start() {
 
     mkdir -p /opt/laworks/rc.laworks.d /opt/laworks/log
 
+    miscport=9123
+
     log_begin_msg "Running laworks boot scripts (/opt/laworks/rc.laworks.d)"
 
     . /etc/profile.d/nodeinfo
 
-    wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$master/others/rc.laworks.d/  -P /opt/laworks/rc.laworks.d > /tmp/wget.log
+    wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$master:$miscport/others/rc.laworks.d/  -P /opt/laworks/rc.laworks.d > /tmp/wget.log
 
     if [ "x$postscripts" == "x" ]; then
         echo "no post script to be executed" >> $logfile

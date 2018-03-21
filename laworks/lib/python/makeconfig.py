@@ -46,7 +46,7 @@ def makehttpd(dbconn):
     webport = vdict.get('webport', '8080')
 
     wwwuser = vdict.get('wwwuser', 'www-data')
-    wwwgrp = vdict.get('wwwgrp', 'wwww-data')
+    wwwgrp = vdict.get('wwwgrp', 'www-data')
 
     httptmpl = Template(file=CONF_TMPL_HTTPD, 
             searchList = {
