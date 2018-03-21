@@ -3,3 +3,6 @@
 *.sw*
 tags
 laworks/bak
+laworks/etc/bak
+laworks/misc/others/.id_rsa.pub
+laworks/misc/profiles
