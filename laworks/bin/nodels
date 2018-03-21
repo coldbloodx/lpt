@@ -68,6 +68,7 @@ class LANodeLsApp(LAApp):
         
         allnodes = dbconn.query(Node).all()
         nodes = allnodes
+
         if self.options.nodename:
             nodes = [ node for node in allnodes if node.nodename == self.options.nodename ]
             

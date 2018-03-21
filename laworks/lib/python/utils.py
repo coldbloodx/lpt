@@ -12,6 +12,19 @@ except:
     from popen5 import subprocess
 
 
+def objs2dict(objs, key):
+    retdict = {} 
+    for obj in objs:
+        tmpdict = {}
+        tmpdict.update(obj.__dict__)
+        for okey in tmpdict.keys():
+            if okey.startswith('_') or okey.startswith('__'):
+                tmpdict.pop(okey)
+
+        retdict[tmpdict[key]] = tmpdict
+
+    return retdict
+
 def getmyos():
     cmd = 'lsb_release -is' 
     out, err, ret = runcmd(cmd)
