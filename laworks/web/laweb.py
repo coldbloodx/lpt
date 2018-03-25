@@ -1,10 +1,5 @@
 from flask import Flask,request,jsonify
-from flask.ext.restful import Api, Resource
-
-
-#for lpt related python libs
-#import sys
-#sys.path.insert(0, '/opt/laworks/lib/python/')
+from flask.ext.restful import Api, Resource, reqparse
 
 from dbman import ConnManager as DBConnManager
 from dbitem import *
@@ -13,8 +8,13 @@ from constant import *
 from nodeoperation import *
 from utils import *
 
+import os
+
 app = Flask(__name__)
 api = Api(app)
+UPLOAD_FOLDER = '/tmp'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.debug = True
 
 class Nodes(Resource):
     def get(self):
@@ -24,6 +24,30 @@ class Nodes(Resource):
 
         return jsonify(nodemap)
 
+    def post(self):
+        ret = {'code' : 400}
+        data = request.get_json()
+        app.logger.info("post json: %s" % data)
+
+        ifile = request.files['filename']
+        app.logger.info("post files: %s" % ifile)
+        ifile.save(os.path.join(app.config['UPLOAD_FOLDER'], ifile.filename))
+
+        #iform = request.form
+        #app.logger.info("post form: %s" % iform)
+        return jsonify(ret)
+
+    def put(self):
+        """ update info about all specified nodes"""
+        data= {'code' : 200 }
+
+        return jsonify(data)
+
+    def delete(self):
+        data= {'code' : 200 }
+
+        return jsonify(data)
+
 class RNode(Resource):
     def get(self, nid):
         dbconn = DBConnManager.get_session()
@@ -32,8 +56,16 @@ class RNode(Resource):
         return jsonify(nodedict)
 
     def post(self):
-        data= {'code' : 200 }
+        """ update specified node"""
+        data = {'code' : 403}
+        return jsonify(data)
 
+    def put(self):
+        data= {'code' : 200 }
+        return jsonify(data)
+
+    def delete(self):
+        data= {'code' : 200 }
         return jsonify(data)
 
 class NodeGroups(Resource):
@@ -112,7 +144,7 @@ api.add_resource(Nets, '/nets/')
 api.add_resource(Nics, '/nics/')
 #api.add_resource(RNic, '/nics/<nicid>')
 
-api.add_resource(Nodes, '/nodes/')
+api.add_resource(Nodes, '/nodes/', methods = ['GET', 'POST'])
 api.add_resource(RNode, '/nodes/<nid>')
 
 api.add_resource(NodeGroups, '/ngs/')
@@ -126,4 +158,5 @@ api.add_resource(PartSchemas, '/partschemas/')
 
 if __name__ == '__main__':
     app.debug = True
+    api.initlogger()
     app.run()
