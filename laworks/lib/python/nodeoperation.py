@@ -37,7 +37,7 @@ def get_available_num(numbers, maxnum):
 
     return 'zzz'
 
-def importnodes(dbconn, deffile, nodegroup):
+def importnodes(dbconn, deffile, nodegroup, updatehosts=True):
     if not os.path.isfile(deffile):
         return False, "Cannot find specified file: %s" % deffile
 
@@ -151,11 +151,12 @@ def importnodes(dbconn, deffile, nodegroup):
         os.chmod(macfile, 0666)
 
     #generate /etc/hosts
-    hosts = makehosts(dbconn)
-    hostsfp = open("/etc/hosts", 'w')
-    hostsfp.writelines(hosts)
-    hostsfp.writelines("\n")
-    hostsfp.close()
+    if updatehosts:
+        hosts = makehosts(dbconn)
+        hostsfp = open("/etc/hosts", 'w')
+        hostsfp.writelines(hosts)
+        hostsfp.writelines("\n")
+        hostsfp.close()
 
     return True, None
 
@@ -344,21 +345,18 @@ def genlocalbootpxe(nic):
 
     os.chmod(macfile, 0666)
 
-def removenodes(namelist):
-
-    dbconn = DBConnManager.get_session()
+def removenodes(dbconn, namelist, updatehosts=True):
 
     nodes = dbconn.query(Node).filter(Node.nodename.in_(namelist)).all()
     if not nodes:
-        return None, None
+        return [], namelist
 
     valid_node_names = [ node.nodename for node in nodes ]
-    invalid_node_names = list(set(namelist) - set(valid_node_names))
+    invalid_node_names = (list(set(namelist) - set(valid_node_names))) 
 
     nidlist = [ node.nid for node in nodes ]
     nics = dbconn.query(Nic).filter(Nic.nid.in_(nidlist)).filter(Nic.nictype==NICTYPE_BOOT).all()
     ips = [ nic.ip for nic in nics ]
-
 
     macfiles = [ "01-%s" % nic.mac.replace(':', "-") for nic in nics ] 
     rmcmd = "cd %s; rm -fr %s" % (PXEFILE_DIR, " ".join(macfiles))
@@ -375,24 +373,11 @@ def removenodes(namelist):
     dbconn.commit()
     dbconn.close()
 
-    hostsfp = open('/etc/hosts', 'r')
-    content = hostsfp.readlines()
-    hostsfp.close()
-    
-    newcontent = []
-    for line in content:
-        # handle empty lines
-        if not line.strip():
-            newcontent.append(line)
-            continue
+    if updatehosts:
+        hosts = makehosts(dbconn)
+        hostsfp = open("/etc/hosts", 'w')
+        hostsfp.writelines(hosts)
+        hostsfp.writelines("\n")
+        hostsfp.close()
 
-        ip = line.split()[0]
-
-        if ip not in ips:
-            newcontent.append(line)
-
-    hostsfp = open('/etc/hosts', 'w')
-    content = hostsfp.writelines(newcontent)
-    hostsfp.close()
-
-    return valid_node_names, invalid_node_names
+    return valid_node_names or [], invalid_node_names or []

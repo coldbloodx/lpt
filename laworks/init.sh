@@ -102,7 +102,7 @@ _EOF
     cp /root/.ssh/id_rsa.pub $LAMISC/others/.id_rsa.pub
 
     #give the permission to apache
-    chown $HTTPUSER:$HTTPGRP $LAMISC $LACGI $LAWEB -R
+    chown $HTTPUSER:$HTTPGRP $LAMISC $LACGI $LAWEB /var/lib/tftpboot/pxelinux.cfg/ -R
 
     #add http listen port
     miscport=`gls -k miscport -c value --valueonly`

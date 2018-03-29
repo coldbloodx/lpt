@@ -17,7 +17,6 @@ class LANodeRmApp(LAApp):
         LAApp.__init__(self, debug=False)
         self.force_single_instance()
 
-
     def run(self):
         if len(sys.argv) <= 1:
             errout("noderm node1 node2 ...")
@@ -25,7 +24,8 @@ class LANodeRmApp(LAApp):
         
         namelist = sys.argv[1:]
 
-        (donelist, undonelist) = removenodes(namelist)
+        dbconn = DBConnManager.get_session()
+        (donelist, undonelist) = removenodes(dbconn, namelist)
         if donelist:
             print ",".join(donelist) + " are deleted"
         if undonelist:

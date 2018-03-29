@@ -35,6 +35,14 @@ def get_net_map(dbconn):
 
     return netmap
 
+def ngexist(dbconn, ngname):
+    ng = get_ng_byname(dbconn, ngname)
+
+    if not ng: return False
+
+    return True
+    
+
 def get_prov_networks(dbconn):
     provnetworks = dbconn.query(Network).filter_by(nwtype="prov").all()
     return provnetworks
