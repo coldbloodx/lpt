@@ -18,16 +18,33 @@ def getnicinfo(nicname):
 
     if ret:
         return None
-    
-    outlist = out[0].split()
 
-    ip, broadcast, mask = [ i.split(":")[1] for i in outlist[1:] ]
+    #out could be:
+    #ubuntu 18.04: ['inet 9.111.250.86  netmask 255.255.255.0  broadcast 9.111.250.255', ' ']
+    #ubuntu 16.04: ['inet addr:9.111.250.85  Bcast:9.111.250.255  Mask:255.255.255.0', ' ']
+
+    ip = ''
+    broadcast = ''
+    mask = ''
+    mac = ''
+    
+    if(out[0].find(":") > 0):
+        ip, broadcast, mask = [ i.split(":")[1] for i in outlist[1:] ]
+    else:
+        strlist = out[0].split()
+        ip = strlist[1]
+        broadcast = strlist[3]
+        mask = strlist[5]
+
 
     out, err, ret = runcmd("ifconfig %s |grep -w HWaddr" % (nic))
     if ret:
-        return None
-
-    mac = out[0].strip().split()[-1]
+        out, err, ret = runcmd("ifconfig %s|grep -w ether" % (nic))
+        if ret:
+            return None
+        mac = out[0].strip().split()[1]
+    else:
+        mac = out[0].strip().split()[-1]
     
     #get lines like below
     #0.0.0.0         9.111.251.2     0.0.0.0         UG    0      0        0 ens160

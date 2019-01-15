@@ -127,7 +127,12 @@ class TableManager:
         self.engine = create_engine(connect_string, echo=True)
 
     def create_tables(self):
-        Base.metadata.create_all(self.engine)
+        try:
+            Base.metadata.create_all(self.engine)
+        except Exception, e:
+            print e.message
+            sys.exit(1)
+            
         self.__init_record()
 
     def __init_record(self):
@@ -144,8 +149,8 @@ class TableManager:
             errout("Cannot get public or provision network info")
             sys.exit(1)
 
-        pubnetwork  = IP(pubnicinfo[0]).make_net(pubnicinfo[2])
-        provnetwork = IP(provnicinfo[0]).make_net(provnicinfo[2])
+        pubnetwork  = IP(pubnicinfo[0]).make_net(pubnicinfo[1])
+        provnetwork = IP(provnicinfo[0]).make_net(provnicinfo[1])
 
         provippool = []
         for ip in provnetwork:
