@@ -1,0 +1,201 @@
+#!/bin/bash
+
+function prepare()
+{
+    laprofile=$LAROOT/bin/laworks.profile
+
+    if [ ! -f $laprofile ]; then
+        echo "not a lpt environment, exit"
+        exit 1
+    fi
+
+    . $laprofile
+
+    if [ "x$ngname" = "x" ]; then
+        echo "usage: $progname <ngname>" 1>&2
+        exit 1
+    fi
+
+    if ! ngls -g $ngname > /dev/null 2>&1 ; then
+        echo "invalid ngname"
+        exit 1
+    fi
+    
+    #assign values to gvars
+    uitype=`ngls -g $ngname -c uitype --valueonly`
+    ngid=`ngls -g $ngname -c ngid --valueonly`
+    osname=`ngls -g $ngname -c os --valueonly`
+    apturl=`osls -o $osname -c repo --valueonly`
+    distro=`osls -o $osname -c distro --valueonly`
+    tmpdir=/tmp/$ngid.$uitype
+    fsdir=$LAROOT/misc/rootfs
+
+    srclist=$tmpdir/etc/apt/sources.list
+    proxyconf=$tmpdir/etc/apt/apt.conf.d/00proxy
+
+    password=`gls -k password -c value --valueonly`
+
+    #remove old rootfs
+    rm -fr $tmpdir
+    rm -fr $fsdir/$osname/${uitype}rootfs.tar.gz
+
+    mkdir -p $tmpdir/var/lib/dpkg
+    mkdir -p $tmpdir/etc
+    mkdir -p $fsdir
+    touch $tmpdir/etc/fstab
+}
+
+function createbasefs()
+{
+    ipkgs="linux-image-generic openssh-server vim bash-completion tree subversion build-essential git-core nfs-common ctags cscope  libc6-dev"
+    rpkgs="thunderbird-gnome-support thunderbird libreoffice-avmedia-backend-gstreamer libreoffice-base-core libreoffice-calc libreoffice-common libreoffice-core libreoffice-draw libreoffice-gnome libreoffice-gtk libreoffice-impress libreoffice-math libreoffice-ogltrans libreoffice-pdfimport libreoffice-style-breeze libreoffice-style-elementary libreoffice-style-galaxy libreoffice-writer"
+
+
+    if [ "x$uitype" = "xgui" ]; then
+        ipkgs="$ipkgs ubuntu-desktop"
+    fi
+
+    debootstrap --verbose --no-check-gpg `lsb_release -cs` $tmpdir $apturl
+
+    #use OS sources.list for chroot source list
+    #TODO: generate sources.list dynamically
+    cp /etc/apt/sources.list $srclist
+    cp /etc/apt/apt.conf.d/00proxy  $proxyconf
+
+    #change root and do some thing
+    # <------ command for chroot start
+    cat <<_EOF > $tmpdir/env.sh
+#!/bin/bash
+
+#change root password
+echo -e "$password\n$password" |passwd
+
+
+#environment variable to disable interactive prompt
+export DEBIAN_FRONTEND=noninteractive
+
+#install some necessary packages
+apt -y clean
+apt -y update
+apt -o Dpkg::Options::="--force-confdef" -fuy install -y --allow-unauthenticated $ipkgs
+
+#remove useless pkgs
+apt -y purge $rpkgs
+apt -y autoremove
+
+#clean again for the installed packages
+apt -y clean
+
+#unset environment variable
+unset DEBIAN_FRONTEND
+
+#configure locales
+#/usr/share/locales/install-language-pack en.US
+locale-gen en_US.UTF-8
+
+cat << __LAEOF >> /etc/default/locale
+LANG="en_US.UTF-8"
+LANGUAGE="en_US.UTF-8"
+__LAEOF
+
+_EOF
+    # <------ command for chroot end
+
+    #mount memfs
+    mountmemfs
+
+    # chroot execute the scripts generated above
+    chroot $tmpdir /bin/bash -c "/bin/bash env.sh"
+}
+
+function mountmemfs()
+{
+    mkdir -p $tmpdir/{proc,dev,sys}
+    mount --bind /proc $tmpdir/proc 
+    mount --bind /dev $tmpdir/dev 
+    mount --bind /sys $tmpdir/sys
+}
+
+function umountmemfs()
+{
+    umount -f -l $tmpdir/sys
+    umount -f -l $tmpdir/dev
+    umount -f -l $tmpdir/proc
+}
+
+function setuppkgs()
+{
+    #add customed vimrcs
+    cp -fr $LAROOT/etc/config/vim/{.vimrc,.vim}  $tmpdir/root/
+
+    #fix .profile issue when gui login 
+    if [ "x$uitype" = "xgui" ]; then
+        sed -i 's/mesg/tty -s \&\& mesg n/g' $tmpdir/root/.profile
+        echo "greeter-show-manual-login=true" >> $tmpdir/usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf
+    fi
+
+    #fix grub menu
+    sed -i 's/GRUB_HIDDEN_TIMEOUT=0/#GRUB_HIDDEN_TIMEOUT=0/g' $tmpdir/etc/default/grub
+
+    #fix ssh root login
+    sed -ie 's/PermitRoot.*/PermitRootLogin yes/g; s/StrictModes.*/StrictModes No/g' $tmpdir/etc/ssh/sshd_config
+
+    #did not show all files for alias ll
+    sed -i 's/alF/hlF/g' $tmpdir/root/.bashrc
+}
+
+function cleanfs()
+{
+    umountmemfs
+}
+
+#pack fs
+function packfs()
+{
+    echo "pack fs"
+    exlist=/tmp/exlist
+
+    cat << _EOF > $exlist
+    proc/*
+    dev/*
+    tmp/*
+_EOF
+
+    mkdir -p $fsdir/$osname
+    cd $tmpdir
+    tar czf $fsdir/$osname/${uitype}rootfs.tar.gz . -X $exlist
+    cd -
+}
+
+###########################
+#####      Main      ######
+###########################
+
+# global vars
+progname=$0
+ngname=$1
+
+# global vars declaration
+osname=''
+distro=''
+repourl=''
+ngid=''
+uitype=''
+tmpdir=''
+srclist='' 
+fsidr=''
+# init gvars
+
+prepare
+
+# create base fs
+createbasefs
+
+# do some package setup
+setuppkgs
+
+# do some cleanup work
+cleanfs
+
+# pack the fs to proper place
+packfs
