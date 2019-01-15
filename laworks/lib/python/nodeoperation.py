@@ -7,6 +7,7 @@ from Cheetah.Template import Template
 from IPy import IP
 from ipfun import ipsort, get_available_ips, onnet
 from dbhelper import *
+from utils import *
 from dbitem import *
 from makeconfig import makehosts
 from dbman import ConnManager as DBConnManager
@@ -94,7 +95,7 @@ def importnodes(dbconn, deffile, nodegroup, updatehosts=True):
 
                 if (not onnet(nicip, netmap['provision'].network, netmap['provision'].netmask)) and \
                 (not onnet(nicip, netmap['public'].network, netmap['public'].netmask)):
-                    errout("IP: %s is on neither public network nor private network")
+                    errout("IP: %s is on neither public network nor private network" % nicip)
                     badnicinfo = True
                     break
 
@@ -122,6 +123,8 @@ def importnodes(dbconn, deffile, nodegroup, updatehosts=True):
 
         todonodes[nodename]['nics'] = nodenics
     
+    if not len(todonodes):
+        sys.exit(1)
     
     for nodename,attrdict in todonodes.iteritems():
         node = Node(nodename, ng.ngid, STATUS_IMPORTED)
