@@ -64,7 +64,7 @@ class DatabaseManager:
                   %(self.port, self.username, self.dbname)
         else:
             raise Exception, "unknown database driver"
-
+        
         out, err, ret = runcmd(db_remove_cmd)
         if ret:
             raise Exception, "database remove error: %s" %(err)
