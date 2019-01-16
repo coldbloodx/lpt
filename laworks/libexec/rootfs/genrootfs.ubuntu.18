@@ -155,7 +155,8 @@ function setuppkgs()
     sed -i 's/GRUB_HIDDEN_TIMEOUT=0/#GRUB_HIDDEN_TIMEOUT=0/g' $tmpdir/etc/default/grub
 
     #fix ssh root login
-    sed -ie 's/PermitRoot.*/PermitRootLogin yes/g; s/StrictModes.*/StrictModes No/g' $tmpdir/etc/ssh/sshd_config
+    sed -ie 's/#PermitRoot.*/PermitRootLogin yes/g; s/#StrictModes.*/StrictModes No/g' $tmpdir/etc/ssh/sshd_config
+    sed -ie 's/#PermitRoot.*/PermitRootLogin yes/g; s/#StrictModes.*/StrictModes No/g' $tmpdir/etc/ssh/sshd_confige
 
     #did not show all files for alias ll
     sed -i 's/alF/hlF/g' $tmpdir/root/.bashrc
