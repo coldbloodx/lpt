@@ -307,6 +307,12 @@ _EOF
         # following line is available on busy-box but not available on bash
         echo -e "\n" >> $networkconf
     done
+    
+    systemd_dnsconf=$sysroot/etc/systemd/resolved.conf
+    cat << _DNSEOF > $systemd_dnsconf
+[Resolve]
+DNS=$dns
+_DNSEOF
 
     #update hostname to nodename
     echo "updating hostname to $nodename"
