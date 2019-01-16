@@ -34,6 +34,11 @@ function prepare()
     proxyconf=$tmpdir/etc/apt/apt.conf.d/00proxy
 
     password=`gls -k password -c value --valueonly`
+    proxy=`gls -k http_proxy -c value --valueonly`
+
+    if [ "x$proxy" != "x" ]; then
+        export http_proxy=$proxy
+    fi
 
     #remove old rootfs
     rm -fr $tmpdir
@@ -61,6 +66,13 @@ function createbasefs()
     #TODO: generate sources.list dynamically
     cp /etc/apt/sources.list $srclist
     cp /etc/apt/apt.conf.d/00proxy  $proxyconf
+
+    #create apt proxy conf
+    cat <<_PROXY > $proxyconf
+Acquire::http::proxy "$http_proxy";
+Acquire::https::proxy "$http_proxy";
+
+_PROXY
 
     #change root and do some thing
     # <------ command for chroot start
@@ -169,7 +181,7 @@ _EOF
     mkdir -p $fsdir/$osname
     cd $tmpdir
     tar czf $fsdir/$osname/${uitype}rootfs.tar.gz . -X $exlist
-    cd -
+    cd - > /dev/null
 }
 
 ###########################

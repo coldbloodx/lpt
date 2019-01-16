@@ -187,6 +187,7 @@ class TableManager:
             Global("miscport", self.conf.get('miscport', '9123')),
             Global("cgiport", self.conf.get('cgiport', '9124')),
             Global("webport", self.conf.get('webport', '8080')),
+            Global("http_proxy", self.conf.get('http_proxy', '')),
             Global("domain", domain)])
         session.commit();
 
