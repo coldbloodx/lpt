@@ -83,6 +83,10 @@ apt -o Dpkg::Options::="--force-confdef" -fuy install -y --allow-unauthenticated
 apt -y purge $rpkgs
 apt -y autoremove
 
+#for ubuntu 18.04, remove netplan.io, and install ifupdown
+apt -y purge netplan.io
+apt -y install ifupdown net-tools
+
 #clean again for the installed packages
 apt -y clean
 
@@ -96,6 +100,7 @@ locale-gen en_US.UTF-8
 cat << __LAEOF >> /etc/default/locale
 LANG="en_US.UTF-8"
 LANGUAGE="en_US.UTF-8"
+
 __LAEOF
 
 _EOF

@@ -491,6 +491,13 @@ mkdiskedrfs()
     url="http://$masterip:$miscport/rootfs/$distro/${uitype}rootfs.tar.gz"
     wget $url -O $rootfs
 
+    if [ "x$?" != "x0" ]; then
+        echo "cannot get rootfs, please make sure the root fs is placed in correct place"
+        echo "cannot get rootfs, please make sure the root fs is placed in correct place"
+        echo "cannot get rootfs, please make sure the root fs is placed in correct place"
+        debug
+    fi
+
     echo "making rootfs"
     echo yes | mke2fs -q -t ext4 $rootpart
 
