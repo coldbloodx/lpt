@@ -353,6 +353,11 @@ update_rhel_init_grub()
     chroot $sysroot /bin/bash -c "grub2-install $boothd"
     chroot $sysroot /bin/bash -c "mkinitrd --force $initrd $kversion"
     chroot $sysroot /bin/bash -c "grub2-mkconfig > /boot/grub2/grub.cfg"
+    
+    cd $sysroot/var
+    rm -fr run
+    ln -sf /run run
+    cd - > /dev/null
 }
 
 update_debian_initrd_grub()
