@@ -30,7 +30,7 @@ nslcd            nslcd/ldap-uris                         string    $ldapurl
 nslcd            nslcd/ldap-base                         string    $basedn
 _EOF
             cat $preseed | debconf-set-selections
-            pkgs="autofs-ldap ldap-auth-client ldap-auth-config ldap-utils libnss-ldap libpam-ldap csh ed psmisc"
+            pkgs="autofs-ldap ldap-auth-client ldap-auth-config ldap-utils libnss-ldap libpam-ldap csh ed psmisc axel"
             apt -y install $pkgs
             ;;
         *)
