@@ -15,7 +15,7 @@ function installpkgs()
     ostype=`lsb_release -is`
     case $ostype in
         CentOS | RedHatEnterpriseServer)
-            pkgs="nss-pam-ldapd openldap autofs authconfig nfs-utils csh"
+            pkgs="nss-pam-ldapd openldap autofs authconfig nfs-utils csh ed psmisc"
             yum -y install $pkgs
             ;;
         Ubuntu)
@@ -30,7 +30,7 @@ nslcd            nslcd/ldap-uris                         string    $ldapurl
 nslcd            nslcd/ldap-base                         string    $basedn
 _EOF
             cat $preseed | debconf-set-selections
-            pkgs="autofs-ldap ldap-auth-client ldap-auth-config ldap-utils libnss-ldap libpam-ldap csh"
+            pkgs="autofs-ldap ldap-auth-client ldap-auth-config ldap-utils libnss-ldap libpam-ldap csh ed psmisc"
             apt -y install $pkgs
             ;;
         *)
