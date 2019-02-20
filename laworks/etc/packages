@@ -2,6 +2,6 @@ tftpd-hpa isc-dhcp-server pxelinux debootstrap udhcpc busybox-static
 build-essential tree ctags cscope  
 git-core  subversion 
 nfs-kernel-server nfs-common samba 
-python-sqlalchemy python-cheetah python-setuptools python-nose python-dev  python-pymysql python-ipy python-mysqldb python-sqlalchemy* python-unipath python-flask
+python-sqlalchemy python-cheetah python-setuptools python-nose python-dev  python-pymysql python-ipy python-mysqldb python-sqlalchemy* python-unipath python-flask python-flask-restful
 yum rpm createrepo plymouth-label db-util
 libapache2-mod-wsgi  
