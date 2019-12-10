@@ -425,7 +425,6 @@ add_laworks_service()
             ;;
         rhel*|centos*)
             chroot $sysroot /bin/bash -c "chkconfig rc.laworks on"
-            add_rhel_service
             ;;
     esac
 }
