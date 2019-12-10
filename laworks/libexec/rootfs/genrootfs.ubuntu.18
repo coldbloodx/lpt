@@ -181,6 +181,7 @@ _EOF
 
     mkdir -p $fsdir/$osname
     cd $tmpdir
+    rm -fr $proxyconf
     tar czf $fsdir/$osname/${uitype}rootfs.tar.gz . -X $exlist
     cd - > /dev/null
 }
