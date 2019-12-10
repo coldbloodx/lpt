@@ -268,7 +268,7 @@ def gennodeinfo(dbconn, node):
 
     dualboot = node.nodegroup == PROVTYPE_DUALBOOT
 
-    gkeys = ['dns1', 'dns2', 'gateway', 'miscport']
+    gkeys = ['dns1', 'dns2', 'gateway', 'miscport', 'http_proxy']
     vmap = get_global_records(dbconn, gkeys)
 
     if len(vmap['miss']) > 0:
@@ -290,6 +290,7 @@ def gennodeinfo(dbconn, node):
                 'DNS1'      : gvmap['dns1'],
                 'DNS2'      : gvmap['dns2'],
                 'MISCPORT'  : gvmap['miscport'],
+                'PROXY'     : gvmap['http_proxy']
                 }])
 
     content = str(infotmpl)
