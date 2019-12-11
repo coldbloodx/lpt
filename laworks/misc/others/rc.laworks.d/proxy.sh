@@ -26,6 +26,7 @@ function setup_pkgmgr_proxy()
     case $ostype in
         CentOS | RedHatEnterpriseServer)
             errexit "Not implement yet..."
+            echo "proxy=$proxy" >> /etc/yum.conf
             ;;
         Ubuntu)
             proxyconf=/etc/apt/apt.conf.d/00proxy
