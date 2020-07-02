@@ -1,0 +1,191 @@
+#!/bin/bash
+
+function prepare()
+{
+    laprofile=$LAROOT/bin/laworks.profile
+
+    if [ ! -f $laprofile ]; then
+        echo "not a lpt environment, exit"
+        exit 1
+    fi
+
+    . $laprofile
+
+    if [ "x$ngname" = "x" ]; then
+        echo "usage: $progname <ngname>" 1>&2
+        exit 1
+    fi
+
+    if ! ngls -g $ngname > /dev/null 2>&1 ; then
+        echo "invalid ngname"
+        exit 1
+    fi
+    
+    #assign values to gvars
+    uitype=`ngls -g $ngname -c uitype --valueonly`
+    ngid=`ngls -g $ngname -c ngid --valueonly`
+    osname=`ngls -g $ngname -c os --valueonly`
+    repourl=`osls -o $osname -c repo --valueonly`
+    distro=`osls -o $osname -c distro --valueonly`
+    tmpdir=/tmp/$ngid.$uitype
+    fsdir=$LAROOT/misc/rootfs/
+    yumconf=$tmpdir/etc/yum.repos.d/cd.repo
+
+
+    password=`gls -k password -c value --valueonly`
+
+    #remove old rootfs
+    rm -fr $tmpdir
+    rm -fr $fsdir/$osname/${uitype}rootfs.tar.gz
+
+    mkdir -p $tmpdir/var/lib/{yum,rpm}
+    mkdir -p $tmpdir/etc
+    touch $tmpdir/etc/fstab
+}
+
+function createyumrepo()
+{
+    #create yum repo based on iso repo
+    mkdir -p $tmpdir/etc/yum.repos.d/
+    cat > $yumconf << _EOF
+[baseos]
+baseurl=$repourl/BaseOS/
+name=baseos
+enabled=1
+gpgcheck=0
+
+
+[appstream]
+name=appstream
+baseurl=$repourl/AppStream/
+enabled=1
+gpgcheck=0
+_EOF
+
+}
+
+function mountmemfs()
+{
+    #bind mem sys to rootfs dir, like proc, dev, sys
+    mkdir -p $tmpdir/{proc,dev,sys}
+    mount --bind /proc $tmpdir/proc 
+    mount --bind /dev $tmpdir/dev 
+    mount --bind /sys $tmpdir/sys
+}
+
+function umountmemfs()
+{
+    umount -f -l $tmpdir/sys
+    umount -f -l $tmpdir/dev
+    umount -f -l $tmpdir/proc
+}
+
+#install base system
+function createbasefs()
+{
+    createyumrepo 
+    mountmemfs
+
+    pkgs="${distro}-release yum kernel man wget passwd vim openssh-server openssh-clients grub2-pc.x86_64 grub2-tools.x86_64 initscripts net-tools parted redhat-lsb-core bash-completion NetworkManager coreutils-common"
+    yum -y -c $yumconf  --installroot=$tmpdir install $pkgs
+
+    #ubuntu and redhat/centos use a different rpmdb macro here:
+    #redhat/centos: rpm --eval %_dbpath --> /var/lib/rpm
+    #ubuntu         rpm --eval %_dbpath --> /root/.rpmdb
+    #so after yum chroot install the rpmdb are placed in different location
+    #because LPT only supports MN on ubuntu, mv the rpmdb to correct location
+
+    cp -fr $tmpdir/root/.rpmdb/* $tmpdir/var/lib/rpm
+
+    ls -alh $tmpdir/var/lib/rpm/*
+
+    #rm -fr $tmpdir/var/lib/rpm/__db.*
+    filelist=`file $tmpdir/var/lib/rpm/* | grep 'Berkeley DB' | awk -F : '{print \$1}'`
+
+    for file in $filelist; do
+        filename=`basename $file`
+        db_dump $file > $tmpdir/tmp/$filename.dbtmp9
+        rm -fr $file
+        chroot $tmpdir db_load -f /tmp/$filename.dbtmp9 /var/lib/rpm/$filename
+    done
+    
+    chroot $tmpdir rpm --rebuilddb
+
+    rm -fr $tmpdir/etc/yum.repos.d/{CentOS*,redhat*}
+}
+
+#setup pkgs
+function setuppkgs()
+{
+    #set root passwd
+    chroot $tmpdir /bin/bash -c "echo $password |passwd root --stdin"
+
+    #set up vim 
+    cp -fr $LAROOT/etc/config/vim/{.vimrc,.vim}  $tmpdir/root/
+    
+    #set up bashrc
+    cp -fr $LAROOT/etc/config/bash/.bashrc.rhel $tmpdir/root/.bashrc
+    cp -fr $LAROOT/etc/config/bash/.bash_profile.rhel $tmpdir/root/.bash_profile
+}
+
+#clean fs
+function cleanfs()
+{
+    #backup auto generated repos
+    mkdir -p $tmpdir/etc/yum.repos.d/bak
+    mv $tmpdir/etc/yum.repos.d/{CentOS*,redhat*} $tmpdir/etc/yum.repos.d/bak 2>/dev/null
+    umountmemfs
+}
+
+#pack fs
+function packfs()
+{
+    echo "pack fs"
+    exlist=/tmp/exlist
+
+    cat << _EOF > $exlist
+    proc/*
+    dev/*
+    tmp/*
+_EOF
+
+    mkdir -p $fsdir/$osname
+    cd $tmpdir
+    tar czf $fsdir/$osname/${uitype}rootfs.tar.gz . -X $exlist
+    cd -
+}
+
+###########################
+#####      Main      ######
+###########################
+
+# global vars
+progname=$0
+ngname=$1
+
+# global vars declaration
+osname=''
+distro=''
+repourl=''
+ngid=''
+uitype=''
+tmpdir=''
+yumconf='' 
+fsdir=''
+
+
+# init gvars
+
+prepare
+
+# create base fs
+createbasefs
+
+# do some package setup
+setuppkgs
+
+# do some cleanup work
+cleanfs
+
+# pack the fs to proper place
+packfs

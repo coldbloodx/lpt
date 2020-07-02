@@ -187,7 +187,10 @@ config_rhel_network()
         gateway=`echo $nic |awk -F":" '{print $6}'`
         dns=`echo $nic |awk -F":" '{print $7}'`
 
-        networkconf=$sysroot/etc/sysconfig/network-scripts/ifcfg-${interface}
+        confdir=$sysroot/etc/sysconfig/network-scripts
+        mkdir -p $confdir
+
+        networkconf=$confdir/ifcfg-${interface}
 
         echo "====="
         echo "interface: $interface"

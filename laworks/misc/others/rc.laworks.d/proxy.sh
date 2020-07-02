@@ -25,7 +25,6 @@ function setup_pkgmgr_proxy()
     ostype=`lsb_release -is`
     case $ostype in
         CentOS | RedHatEnterpriseServer)
-            errexit "Not implement yet..."
             echo "proxy=$proxy" >> /etc/yum.conf
             ;;
         Ubuntu)
