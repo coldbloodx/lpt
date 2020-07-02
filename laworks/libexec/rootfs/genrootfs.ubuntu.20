@@ -60,11 +60,24 @@ function createbasefs()
         ipkgs="$ipkgs ubuntu-desktop"
     fi
 
-    debootstrap --verbose --no-check-gpg bionic $tmpdir $apturl
+    debootstrap --verbose --no-check-gpg focal $tmpdir $apturl
 
     #use OS sources.list for chroot source list
     #TODO: generate sources.list dynamically
-    cp /etc/apt/sources.list $srclist
+    #cp /etc/apt/sources.list $srclist
+    cat <<_SRC > $srclist
+deb http://archive.ubuntu.com/ubuntu focal main restricted
+deb http://archive.ubuntu.com/ubuntu focal-updates main restricted
+deb http://archive.ubuntu.com/ubuntu focal universe
+deb http://archive.ubuntu.com/ubuntu focal-updates universe
+deb http://archive.ubuntu.com/ubuntu focal multiverse
+deb http://archive.ubuntu.com/ubuntu focal-updates multiverse
+deb http://archive.ubuntu.com/ubuntu focal-backports main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu focal-security main restricted
+deb http://archive.ubuntu.com/ubuntu focal-security universe
+deb http://archive.ubuntu.com/ubuntu focal-security multiverse
+_SRC
+
     cp /etc/apt/apt.conf.d/00proxy  $proxyconf
 
     #create apt proxy conf

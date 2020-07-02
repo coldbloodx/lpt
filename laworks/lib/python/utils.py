@@ -68,7 +68,8 @@ def parseconf(conf="/opt/laworks/etc/install.conf"):
         ret = eval(' '.join(content))
         return ret
     except Exception, e:
-        return None
+        errexit("error parsing configuration file: %s" % (str(e)))
+
 
 class CmdExecutor(object):
     def __init__(self, logger=None):
