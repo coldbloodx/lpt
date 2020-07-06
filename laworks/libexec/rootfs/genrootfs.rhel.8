@@ -86,7 +86,7 @@ function createbasefs()
     createyumrepo 
     mountmemfs
 
-    pkgs="${distro}-release yum kernel man wget passwd vim openssh-server openssh-clients grub2-pc.x86_64 grub2-tools.x86_64 initscripts net-tools parted redhat-lsb-core bash-completion NetworkManager coreutils-common"
+    pkgs="${distro}-release yum kernel man wget passwd vim openssh-server openssh-clients grub2-pc.x86_64 grub2-tools.x86_64 initscripts net-tools parted redhat-lsb-core bash-completion NetworkManager coreutils-common selinux-policy shadow-utils"
     yum -y -c $yumconf  --installroot=$tmpdir install $pkgs
 
     #ubuntu and redhat/centos use a different rpmdb macro here:
@@ -112,6 +112,7 @@ function createbasefs()
     chroot $tmpdir rpm --rebuilddb
 
     rm -fr $tmpdir/etc/yum.repos.d/{CentOS*,redhat*}
+    sed -i 's/^SELINUX=.*/SELINUX=disabled/g' $tmpdir/etc/selinux/config
 }
 
 #setup pkgs
