@@ -1,7 +1,7 @@
 #! /bin/bash
 ### BEGIN INIT INFO
 # Provides:          rc.laworks
-# Required-Start:    $networking
+# Required-Start:    sshd.service
 # Required-Stop:
 # Default-Start:     2 3 4 5
 # Default-Stop:
@@ -11,13 +11,6 @@
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
-if [ -f /lib/init/vars.sh ] ; then
-    . /lib/init/vars.sh
-fi
-
-if [ -f /lib/lsb/init-functions ]; then
-    . /lib/lsb/init-functions
-fi
 
 do_start() {
     logfile=/opt/laworks/log/rc.log 
@@ -25,11 +18,18 @@ do_start() {
 
     mkdir -p /opt/laworks/rc.laworks.d /opt/laworks/log
 
-    log_begin_msg "Running laworks boot scripts (/opt/laworks/rc.laworks.d)"
-
     . /etc/profile.d/nodeinfo
 
-    wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$master:$miscport/others/rc.laworks.d/  -P /opt/laworks/rc.laworks.d 2>&1 > /tmp/wget.log
+    for((i=0; i<5; ++i)); do 
+
+    wget -l inf -nH -N -r  --timeout=10  -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$master:$miscport/others/rc.laworks.d/  -P /opt/laworks/rc.laworks.d 2>&1 > /tmp/wget.log
+    if [ "x$?" != "x0" ]; then
+        i=$((i+1))
+        echo "retry:$i, sleep 5 seconds" >> $logfile
+        sleep 5
+    fi
+    
+    done
 
     if [ "x$postscripts" == "x" ]; then
         echo "no post script to be executed" >> $logfile
